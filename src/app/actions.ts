@@ -3,9 +3,10 @@
 
 import { eq, not } from "drizzle-orm";
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
 import { deals, watches } from "@/db/schema";
-import { sendAlerts } from "@/jobs/notify";
+import { sendAlerts, sendTestAlert } from "@/jobs/notify";
 import { runFetch } from "@/jobs/run-fetch";
 import { parsePriceToCents } from "@/lib/money";
 
@@ -39,4 +40,10 @@ export async function removeWatch(watchId: number) {
   const db = await getDb();
   await db.delete(watches).where(eq(watches.id, watchId));
   refresh();
+}
+
+/** The "Send test alert" button on the Watchlist page. The result shows in a banner. */
+export async function testAlert() {
+  const result = await sendTestAlert();
+  redirect(`/watchlist?test=${result}`);
 }

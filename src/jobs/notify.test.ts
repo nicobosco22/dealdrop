@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { openDb } from "@/db/client";
 import { deals, watches } from "@/db/schema";
 import type { SourceDeal } from "@/sources/types";
-import { buildAlertMessage, findNewMatches, sendAlerts } from "./notify";
+import { buildAlertMessage, findNewMatches, readWebhook, sendAlerts } from "./notify";
 import { saveDeals } from "./save-deals";
 
 function deal(title: string, priceCents: number, over: Partial<SourceDeal> = {}): SourceDeal {
@@ -84,5 +84,36 @@ describe("watchlist alerts", () => {
     } finally {
       if (saved !== undefined) process.env.DISCORD_WEBHOOK_URL = saved;
     }
+  });
+});
+
+describe("readWebhook", () => {
+  const withUrl = (value: string | undefined) => {
+    const saved = process.env.DISCORD_WEBHOOK_URL;
+    if (value === undefined) delete process.env.DISCORD_WEBHOOK_URL;
+    else process.env.DISCORD_WEBHOOK_URL = value;
+    try {
+      return readWebhook().status;
+    } finally {
+      if (saved === undefined) delete process.env.DISCORD_WEBHOOK_URL;
+      else process.env.DISCORD_WEBHOOK_URL = saved;
+    }
+  };
+
+  it("accepts real Discord webhook addresses", () => {
+    expect(withUrl("https://discord.com/api/webhooks/123456789012345678/abc-DEF_123")).toBe("ready");
+    expect(withUrl("  https://discordapp.com/api/webhooks/123/abc  ")).toBe("ready");
+  });
+
+  it("says when nothing is set", () => {
+    expect(withUrl(undefined)).toBe("missing");
+    expect(withUrl("   ")).toBe("missing");
+  });
+
+  it("refuses anything that is not a Discord webhook", () => {
+    expect(withUrl("https://example.com/api/webhooks/123/abc")).toBe("not-discord");
+    expect(withUrl("https://discord.com.evil.example/api/webhooks/123/abc")).toBe("not-discord");
+    expect(withUrl("http://discord.com/api/webhooks/123/abc")).toBe("not-discord");
+    expect(withUrl("https://discord.com/channels/123/456")).toBe("not-discord");
   });
 });

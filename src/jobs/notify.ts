@@ -32,23 +32,52 @@ export async function findNewMatches(db: Db, watch: WatchRow, now: Date): Promis
     .orderBy(deals.priceCents);
 }
 
+export type WebhookStatus = "ready" | "missing" | "not-discord";
+
+/**
+ * Looks at DISCORD_WEBHOOK_URL. Only real Discord webhook addresses are accepted,
+ * so a typo can never make DealDrop post your watchlist to some other website.
+ */
+export function readWebhook(): { status: WebhookStatus; url: string | null } {
+  const url = process.env.DISCORD_WEBHOOK_URL?.trim();
+  if (!url) return { status: "missing", url: null };
+  const ok = /^https:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(url);
+  return ok ? { status: "ready", url } : { status: "not-discord", url: null };
+}
+
+async function post(url: string, content: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: content.slice(0, 1900) }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** The "Send test alert" button. Says what happened without ever revealing the address. */
+export async function sendTestAlert(): Promise<"sent" | "failed" | WebhookStatus> {
+  const { status, url } = readWebhook();
+  if (!url) return status;
+  const ok = await post(url, "DealDrop test alert: your watchlist alerts are working.");
+  return ok ? "sent" : "failed";
+}
+
 export type AlertReport = { sent: number; skipped: "no webhook set" | null };
 
 export async function sendAlerts(db: Db, now: Date = new Date()): Promise<AlertReport> {
-  const webhook = process.env.DISCORD_WEBHOOK_URL;
+  const { url: webhook } = readWebhook();
   if (!webhook) return { sent: 0, skipped: "no webhook set" };
 
   let sent = 0;
   for (const watch of await db.select().from(watches)) {
     const matches = await findNewMatches(db, watch, now);
     if (matches.length === 0) continue;
-    const res = await fetch(webhook, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: buildAlertMessage(watch, matches).slice(0, 1900) }),
-    });
     // Only mark as announced when the message really went out, so a failed send is retried next time.
-    if (res.ok) {
+    if (await post(webhook, buildAlertMessage(watch, matches))) {
       await db.update(watches).set({ lastNotifiedAt: now }).where(eq(watches.id, watch.id));
       sent++;
     }

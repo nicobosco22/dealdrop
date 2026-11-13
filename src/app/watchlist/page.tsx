@@ -7,11 +7,55 @@ import { Logo } from "@/components/Logo";
 import { getDb } from "@/db/client";
 import { listWatches } from "@/db/queries";
 import { formatCents, percentOff } from "@/lib/money";
-import { addWatch, removeWatch } from "../actions";
+import { readWebhook } from "@/jobs/notify";
+import { addWatch, removeWatch, testAlert } from "../actions";
 
 export const metadata = { title: "Watchlist · DealDrop" };
 
-export default function WatchlistPage() {
+const TEST_RESULTS: Record<string, { text: string; good: boolean }> = {
+  sent: { text: "Test alert sent. Check your Discord channel.", good: true },
+  failed: { text: "Discord did not accept the message. Check that the webhook still exists.", good: false },
+  missing: { text: "No webhook address is set yet, so nothing was sent.", good: false },
+  "not-discord": { text: "The address in .env.local is not a Discord webhook address, so nothing was sent.", good: false },
+};
+
+/** Shows whether alerts are switched on, and lets you send a test. Never shows the address itself. */
+async function AlertStatus({ searchParams }: { searchParams: PageProps<"/watchlist">["searchParams"] }) {
+  const test = (await searchParams).test;
+  const result = typeof test === "string" ? TEST_RESULTS[test] : undefined;
+  const { status } = readWebhook();
+  const on = status === "ready";
+
+  return (
+    <section className="glass mt-5 rounded-2xl p-4 text-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={`h-2.5 w-2.5 rounded-full ${on ? "bg-emerald-400 shadow-[0_0_10px_rgb(52_211_153)]" : "bg-zinc-600"}`} />
+        <p className="min-w-0 flex-1">
+          <span className="font-semibold">{on ? "Discord alerts are on." : "Discord alerts are off."}</span>{" "}
+          <span className="text-zinc-400">
+            {on
+              ? "New matches are posted to your channel after each fetch."
+              : status === "not-discord"
+                ? "The address in .env.local is not a Discord webhook address."
+                : "Paste a Discord webhook address into .env.local, then restart the app."}
+          </span>
+        </p>
+        <form action={testAlert}>
+          <button className="rounded-lg border border-white/10 px-3 py-1.5 font-medium text-zinc-200 transition hover:border-emerald-400/50 hover:text-white">
+            Send test alert
+          </button>
+        </form>
+      </div>
+      {result && (
+        <p className={`mt-3 rounded-lg px-3 py-2 ${result.good ? "bg-emerald-400/10 text-emerald-200" : "bg-rose-400/10 text-rose-200"}`}>
+          {result.text}
+        </p>
+      )}
+    </section>
+  );
+}
+
+export default function WatchlistPage({ searchParams }: PageProps<"/watchlist">) {
   return (
     <div className="mx-auto w-full max-w-4xl px-4 pb-12">
       <header className="sticky top-0 z-20 -mx-4 mb-6 flex items-center gap-4 border-b border-white/10 bg-background/70 px-4 py-3 backdrop-blur-xl">
@@ -56,6 +100,10 @@ export default function WatchlistPage() {
           Add watch
         </button>
       </form>
+
+      <Suspense fallback={null}>
+        <AlertStatus searchParams={searchParams} />
+      </Suspense>
 
       <Suspense fallback={<p className="mt-6 text-zinc-400">Loading your watchlist…</p>}>
         <Watches />
