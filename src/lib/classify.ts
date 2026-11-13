@@ -17,6 +17,12 @@ type Rule = {
   match: RegExp;
   /** ...and must NOT match this. */
   unless?: RegExp;
+  /**
+   * What to do when `match` fits but `unless` also fits.
+   * Normally the next rules get a try. With "skip", the product is dropped right away
+   * (a case for a DJ controller should not fall through and be filed as a game controller).
+   */
+  onUnless?: "skip";
 };
 
 // Phrases that mention a product without being that product.
@@ -52,6 +58,16 @@ const RULES: Rule[] = [
   },
 
   // --- Technology ---
+  // DJ gear is checked first: a "DJ controller" must not be mistaken for a game controller,
+  // and "studio monitors" for a DJ booth are speakers, not screens.
+  {
+    category: "technology",
+    subcategory: "dj-gear",
+    match:
+      /\bdj (controllers?|mixers?|decks?|turntables?|headphones?|equipment|gear|booths?|sets?|systems?|speakers?|monitors?|players?|consoles?|packages?|bundles?|starter)\b|\b(ddj|cdj|djm|xdj|plx|dvs)[- ]?[a-z]*\d[a-z0-9-]*\b|\b(pioneer dj|alphatheta|numark|denon dj|rane|serato|rekordbox|traktor|djcontrol|mixtrack|party ?mix|hercules dj)\b|\b(scratch|battle|club) mixers?\b|\b(direct[- ]drive|dj) turntables?\b|\b\d-(channel|deck) (dj )?(controllers?|mixers?)\b/,
+    unless: /\b(cases?|bags?|covers?|stands?|skins?|decksavers?|cables?|stickers?|faceplates?|lessons?|courses?|t-?shirts?|posters?)\b/,
+    onUnless: "skip",
+  },
   {
     category: "technology",
     subcategory: "monitors",
@@ -187,7 +203,12 @@ export function classifyProduct({ title, brand }: ProductInfo): Placement | null
   if (ALWAYS_SKIP.test(text)) return null;
 
   for (const rule of RULES) {
-    if (rule.match.test(text) && !(rule.unless && rule.unless.test(text))) {
+    if (!rule.match.test(text)) continue;
+    if (rule.unless?.test(text)) {
+      if (rule.onUnless === "skip") return null;
+      continue;
+    }
+    {
       // Something filed under consoles that reads like a game title is a game: skip it.
       if (rule.subcategory === "consoles" && VIDEO_GAME.test(text)) return null;
       return { category: rule.category, subcategory: rule.subcategory };

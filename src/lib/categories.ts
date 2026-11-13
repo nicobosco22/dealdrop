@@ -19,6 +19,7 @@ export const TECH_SUBCATEGORIES: { id: string; label: string }[] = [
   { id: "computers", label: "Laptops, desktops, tablets" },
   { id: "tv-video", label: "TVs, soundbars, streaming" },
   { id: "audio", label: "Audio" },
+  { id: "dj-gear", label: "DJ equipment" },
   { id: "phones-wearables", label: "Phones & wearables" },
   { id: "smart-home", label: "Smart home & Wi-Fi" },
   { id: "appliances", label: "Appliances" },

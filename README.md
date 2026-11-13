@@ -33,6 +33,7 @@ npm test
 - Never make up a price. If a price can't be read, the deal is skipped.
 - Every deal stores its link and the time it was last checked.
 - No video games. Consoles and gaming gear are tracked; the games themselves are skipped.
+- While the app is running it fetches new deals every 15 minutes by itself (see `AUTO_FETCH_MINUTES` in `.env.example`).
 - Keys live in `.env.local`, never in the code. See `.env.example`.
 
 ## Build progress

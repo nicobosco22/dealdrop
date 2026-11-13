@@ -193,6 +193,31 @@ describe("search words", () => {
   });
 });
 
+describe("model-name search", () => {
+  beforeAll(async () => {
+    await saveDeals(
+      db,
+      [
+        deal("Pioneer DJ DDJ-FLX4 2-Deck DJ Controller", { subcategory: "dj-gear", store: "Sweetwater" }),
+        deal("Pioneer DDJ FLX4 Controller (Open Box)", { subcategory: "dj-gear", store: "Guitar Center" }),
+        deal("Pioneer DJ DDJ-FLX10 4-Deck DJ Controller", { subcategory: "dj-gear", store: "Sweetwater" }),
+      ],
+      new Date("2026-11-12T10:00:00Z"),
+    );
+  });
+
+  it("finds a model however its name is typed or written", async () => {
+    const both = ["Pioneer DDJ FLX4 Controller (Open Box)", "Pioneer DJ DDJ-FLX4 2-Deck DJ Controller"];
+    for (const q of ["ddj flx4", "DDJ-FLX4", "ddjflx4", "flx-4", "pioneer flx4 controller"]) {
+      expect(await titles({ q, sort: "title" }), q).toEqual(both);
+    }
+  });
+
+  it("does not confuse it with a different model", async () => {
+    expect(await titles({ q: "ddj-flx10" })).toEqual(["Pioneer DJ DDJ-FLX10 4-Deck DJ Controller"]);
+  });
+});
+
 describe("favorites", () => {
   it("shows only saved deals when the favorites filter is on", async () => {
     await db.update(deals).set({ favorite: true }).where(eq(deals.title, "Beta Game"));

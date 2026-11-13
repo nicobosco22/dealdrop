@@ -14,7 +14,18 @@ const SOURCES: Record<string, () => Promise<SourceDeal[]>> = {
 
 export type FetchReport = Record<string, SaveResult | { error: string }>;
 
-export async function runFetch(db: Db): Promise<FetchReport> {
+// Only one fetch runs at a time. If the button is pressed while the timer's fetch
+// is still going, both wait for the same run instead of starting a second one.
+const lock = globalThis as unknown as { dealdropFetch?: Promise<FetchReport> };
+
+export function runFetch(db: Db): Promise<FetchReport> {
+  lock.dealdropFetch ??= fetchAllSources(db).finally(() => {
+    lock.dealdropFetch = undefined;
+  });
+  return lock.dealdropFetch;
+}
+
+async function fetchAllSources(db: Db): Promise<FetchReport> {
   const report: FetchReport = {};
   // Deals from a source we no longer use are removed, so nothing is left behind.
   await db.delete(deals).where(notInArray(deals.source, Object.keys(SOURCES)));

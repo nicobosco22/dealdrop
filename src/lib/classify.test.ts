@@ -58,6 +58,36 @@ describe("technology subcategories", () => {
   });
 });
 
+describe("DJ equipment", () => {
+  it.each([
+    ["Pioneer DJ DDJ-FLX4 2-Deck Rekordbox and Serato DJ Controller", "technology > dj-gear"],
+    ["Pioneer DDJ FLX4 DJ Controller - Graphite", "technology > dj-gear"],
+    ["AlphaTheta DDJ-GRV6 4-Channel DJ Controller", "technology > dj-gear"],
+    ["Pioneer DJ DJM-A9 4-Channel Professional DJ Mixer", "technology > dj-gear"],
+    ["Pioneer DJ CDJ-3000 Professional Multi Player", "technology > dj-gear"],
+    ["Numark Mixtrack Platinum FX 4-Deck DJ Controller", "technology > dj-gear"],
+    ["Numark Party Mix II DJ Controller with Built-In Light Show", "technology > dj-gear"],
+    ["Hercules DJControl Inpulse 500", "technology > dj-gear"],
+    ["Audio-Technica AT-LP140XP Direct-Drive DJ Turntable", "technology > dj-gear"],
+    ["Pioneer DJ HDJ-X5 Over-Ear DJ Headphones", "technology > dj-gear"],
+    ["Rane Seventy-Two MKII Battle Mixer", "technology > dj-gear"],
+    ["Pioneer DJ PLX-500 Direct Drive Turntable", "technology > dj-gear"],
+  ])("%s -> %s", (title, expected) => {
+    expect(place(title)).toBe(expected);
+  });
+
+  it("does not grab game controllers, record players or screens", () => {
+    expect(place("Xbox Wireless Controller - Carbon Black")).toBe("technology > gaming-gear");
+    expect(place("Audio-Technica AT-LP60X Belt-Drive Turntable")).toBe("technology > audio");
+    expect(place('LG UltraGear 27" QHD 165Hz IPS Gaming Monitor')).toBe("technology > monitors");
+  });
+
+  it("skips DJ add-ons", () => {
+    expect(place("Decksaver Cover for Pioneer DDJ-FLX4")).toBe("skip");
+    expect(place("Hard Case for Pioneer DJ DDJ-FLX4 Controller")).toBe("skip");
+  });
+});
+
 describe("appliances go in Tech, not House", () => {
   it.each([
     ["Toshiba 1.2 Cu Ft Countertop Microwave Oven", "technology > appliances"],

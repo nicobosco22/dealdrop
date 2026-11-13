@@ -25,7 +25,13 @@ export function titleHasWords(text: string): SQL[] {
     .filter(Boolean)
     .slice(0, 8)
     .map((word) => {
-      // Escape % and _ so they are searched as plain characters.
+      // Model names are written many ways: "DDJ-FLX4", "DDJ FLX4", "ddjflx4".
+      // So for plain words we compare with everything except letters and digits removed.
+      if (/^[a-z0-9-]+$/i.test(word) && /[a-z0-9]/i.test(word)) {
+        const squashed = word.toLowerCase().replace(/-/g, "");
+        return sql`regexp_replace(lower(${deals.title}), '[^a-z0-9]', '', 'g') like ${`%${squashed}%`}`;
+      }
+      // Anything with other symbols is searched exactly. Escape % and _ so they are plain characters.
       const safe = word.replace(/[\\%_]/g, (c) => `\\${c}`);
       return ilike(deals.title, `%${safe}%`);
     });
