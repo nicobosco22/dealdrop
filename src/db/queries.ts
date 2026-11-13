@@ -46,6 +46,7 @@ export async function listDeals(
 ): Promise<{ rows: DealRow[]; total: number }> {
   const where = whereFor(f, now);
   const column = {
+    best: deals.score,
     newest: sql`coalesce(${deals.sourceUpdatedAt}, ${deals.firstSeenAt})`,
     price: deals.priceCents,
     off: pctOff,

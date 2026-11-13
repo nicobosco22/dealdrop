@@ -1,6 +1,7 @@
 // The database tables. Drizzle turns this file into SQL (see the drizzle/ folder).
 
 import { index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import type { Insights } from "@/lib/insights";
 import type { Specs } from "@/lib/specs";
 
 /** One row per deal from one source. */
@@ -18,6 +19,11 @@ export const deals = pgTable(
     subcategory: text("subcategory"),
     priceCents: integer("price_cents").notNull(),
     listPriceCents: integer("list_price_cents"),
+    insights: jsonb("insights").$type<Insights>(),
+    /** The deal score, 0 to 100 (see src/lib/score.ts). Worked out each time the deal is saved. */
+    score: integer("score").notNull().default(0),
+    /** The "real deal" check result: all-time-low, below-average, inflated, or empty. */
+    verdict: text("verdict"),
     url: text("url").notNull(),
     imageUrl: text("image_url"),
     sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }),
@@ -30,6 +36,7 @@ export const deals = pgTable(
     // The same deal from the same source is updated, never added twice.
     uniqueIndex("deals_source_source_id").on(t.source, t.sourceId),
     index("deals_last_checked").on(t.lastCheckedAt),
+    index("deals_score").on(t.score),
   ],
 );
 

@@ -18,6 +18,7 @@ function deal(id: string, over: Partial<SourceDeal>): SourceDeal {
     subcategory: "consoles",
     priceCents: 1000,
     listPriceCents: 2000,
+    insights: null,
     url: `https://example.com/${id}`,
     imageUrl: null,
     sourceUpdatedAt: null,
@@ -45,8 +46,13 @@ beforeAll(async () => {
 });
 
 describe("listDeals", () => {
-  it("shows newest first by default", async () => {
-    expect((await titles({}))[0]).toBe("100% Cotton_Towels");
+  it("shows the best score first by default", async () => {
+    // Alpha Game: 75% off. Nothing else in this batch scores higher.
+    expect((await titles({}))[0]).toBe("Alpha Game");
+  });
+
+  it("can show newest first", async () => {
+    expect((await titles({ sort: "newest" }))[0]).toBe("100% Cotton_Towels");
   });
 
   it("filters by category and subcategory", async () => {

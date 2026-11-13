@@ -70,6 +70,56 @@ function EndsNote({ expiresAt, now }: { expiresAt: Date | null; now: Date }) {
   return label ? <span className="text-xs font-medium text-amber-400">⏳ {label}</span> : null;
 }
 
+/** The "real deal" check result, as a badge. The facts behind it come from the source's write-up. */
+function VerdictBadge({ deal }: { deal: DealRow }) {
+  const avg = deal.insights?.avg90Cents;
+  if (deal.verdict === "all-time-low") {
+    return (
+      <span
+        title="The source reports this is the lowest price on record."
+        className="rounded-md border border-amber-300/40 bg-amber-300/15 px-1.5 py-0.5 text-[11px] font-bold text-amber-200"
+      >
+        🏆 All-time low
+      </span>
+    );
+  }
+  if (deal.verdict === "below-average" && avg) {
+    return (
+      <span
+        title={`The source reports a 90-day average price of ${formatCents(avg)}.`}
+        className="rounded-md border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-200"
+      >
+        Below 90-day avg ({formatCents(avg)})
+      </span>
+    );
+  }
+  if (deal.verdict === "inflated" && avg) {
+    return (
+      <span
+        title={`The markdown looks bigger than it is: the 90-day average price is ${formatCents(avg)}, about what it costs now.`}
+        className="rounded-md border border-rose-400/40 bg-rose-400/10 px-1.5 py-0.5 text-[11px] font-semibold text-rose-200"
+      >
+        ⚠ Inflated markdown
+      </span>
+    );
+  }
+  return null;
+}
+
+/** The deal score as a small ring that fills up, with the number inside. */
+function ScoreRing({ score }: { score: number }) {
+  const color = score >= 70 ? "#fb7185" : score >= 45 ? "#34d399" : score >= 25 ? "#22d3ee" : "#52525b";
+  return (
+    <span
+      title={`Deal score ${score} out of 100: discount, dollars saved, price history and store trust.`}
+      className="inline-grid h-9 w-9 place-items-center rounded-full text-xs font-bold tabular-nums"
+      style={{ background: `conic-gradient(${color} ${score * 3.6}deg, rgb(255 255 255 / 0.08) 0deg)` }}
+    >
+      <span className="grid h-7 w-7 place-items-center rounded-full bg-[#0c0e12]">{score}</span>
+    </span>
+  );
+}
+
 function NewTag() {
   return (
     <span className="rounded-md bg-cyan-400/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cyan-300">
@@ -117,7 +167,7 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
   return (
     <div className="glass overflow-x-auto rounded-2xl">
       {/* Fixed column widths: the item column takes what is left and long titles are cut with "…". */}
-      <table className="w-full min-w-[860px] table-fixed text-left text-sm">
+      <table className="w-full min-w-[920px] table-fixed text-left text-sm">
         <colgroup>
           <col />
           <col className="w-36" />
@@ -125,7 +175,8 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
           <col className="w-24" />
           <col className="w-20" />
           <col className="w-24" />
-          <col className="w-28" />
+          <col className="w-16" />
+          <col className="w-24" />
         </colgroup>
         <thead className="border-b border-white/10 text-[11px] uppercase tracking-wider text-zinc-400">
           <tr>
@@ -135,6 +186,7 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
             <th className="px-3 py-2.5 text-right font-semibold">Was</th>
             <SortHeader sort="off" label="% off" align="right" {...head} />
             <SortHeader sort="saved" label="Saved" align="right" {...head} />
+            <SortHeader sort="best" label="Score" align="right" {...head} />
             <SortHeader sort="newest" label="Updated" {...head} />
           </tr>
         </thead>
@@ -175,6 +227,7 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
                         <span>{[deal.brand, subcategoryLabel(deal.subcategory)].filter(Boolean).join(" · ")}</span>
                         <SpecChips specs={deal.specs} />
+                        <VerdictBadge deal={deal} />
                         <EndsNote expiresAt={deal.expiresAt} now={now} />
                       </div>
                     </div>
@@ -196,6 +249,9 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
                   {off !== null && deal.listPriceCents !== null
                     ? formatCents(deal.listPriceCents - deal.priceCents)
                     : ""}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  <ScoreRing score={deal.score} />
                 </td>
                 <td
                   className="whitespace-nowrap px-3 py-2 text-xs text-zinc-500"
@@ -241,7 +297,10 @@ export function DealCards({ rows, now }: ViewProps) {
                   {deal.subcategory && <span className="text-zinc-600">{subcategoryLabel(deal.subcategory)}</span>}
                 </p>
                 <SpecChips specs={deal.specs} />
-                <div className="mt-auto flex items-baseline gap-2 pt-2">
+                <span>
+                  <VerdictBadge deal={deal} />
+                </span>
+                <div className="mt-auto flex items-center gap-2 pt-2">
                   <span className="font-mono text-xl font-bold tabular-nums text-emerald-300">
                     {formatCents(deal.priceCents)}
                   </span>
@@ -250,6 +309,9 @@ export function DealCards({ rows, now }: ViewProps) {
                       {formatCents(deal.listPriceCents)}
                     </span>
                   )}
+                  <span className="ml-auto">
+                    <ScoreRing score={deal.score} />
+                  </span>
                 </div>
                 <p className="flex flex-wrap items-center gap-x-2 text-[11px] text-zinc-600">
                   Checked {timeAgo(deal.lastCheckedAt, now)}

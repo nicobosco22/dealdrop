@@ -41,6 +41,24 @@ describe("parseDealNewsItem", () => {
     expect(deal?.sourceUpdatedAt).toBeInstanceOf(Date);
   });
 
+  it("reads the 'was' price and price history from the write-up", () => {
+    const description =
+      '<img src="x"><div class="snippet summary" title="ignored"><p>Amazon has it for <b>$60</b>, which is $19 off the ' +
+      "$79 list price. It matches its Amazon all-time low and sits below its 90-day average of $72.</p></div>" +
+      "<div><ul><li>Costs $5 to ship elsewhere</li></ul></div>";
+    const deal = parseDealNewsItem({ ...find("Apple Magic Mouse"), description });
+    expect(deal).toMatchObject({
+      priceCents: 6000,
+      listPriceCents: 7900,
+      insights: { listFrom: "stated", atAllTimeLow: true, avg90Cents: 7200 },
+    });
+  });
+
+  it("has no 'was' price when the write-up does not give one", () => {
+    const deal = parseDealNewsItem({ ...find("Apple Magic Mouse"), description: "<p>A nice mouse.</p>" });
+    expect(deal).toMatchObject({ listPriceCents: null, insights: null });
+  });
+
   it("keeps the title and link exactly as DealNews sent them", () => {
     const item = find("Hisense");
     const deal = parseDealNewsItem(item);

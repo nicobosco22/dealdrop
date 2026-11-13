@@ -6,7 +6,7 @@ import { isCategory, TECH_SUBCATEGORIES } from "./categories";
 import { parsePriceToCents } from "./money";
 import type { Category } from "@/sources/types";
 
-export const SORTS = ["newest", "price", "off", "saved", "title", "store"] as const;
+export const SORTS = ["best", "newest", "price", "off", "saved", "title", "store"] as const;
 export type Sort = (typeof SORTS)[number];
 
 export type Filters = {
@@ -37,6 +37,7 @@ export type RawParams = Record<string, string | string[] | undefined>;
 
 /** The direction each sort starts in when you first click it. */
 export const DEFAULT_DIR: Record<Sort, "asc" | "desc"> = {
+  best: "desc",
   newest: "desc",
   price: "asc",
   off: "desc",
@@ -84,7 +85,7 @@ export function parseFilters(raw: RawParams): Filters {
   const isMonitors = subcategory === "monitors";
 
   const sortText = one(raw.sort);
-  const sort = (SORTS as readonly string[]).includes(sortText) ? (sortText as Sort) : "newest";
+  const sort = (SORTS as readonly string[]).includes(sortText) ? (sortText as Sort) : "best";
   const dirText = one(raw.dir);
   const dir = dirText === "asc" || dirText === "desc" ? dirText : DEFAULT_DIR[sort];
 

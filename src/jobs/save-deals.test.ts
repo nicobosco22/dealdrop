@@ -15,6 +15,7 @@ const sample: SourceDeal = {
   subcategory: "consoles",
   priceCents: 1000,
   listPriceCents: 2000,
+  insights: null,
   url: "https://example.com/deal/abc",
   imageUrl: null,
   sourceUpdatedAt: null,
@@ -43,6 +44,9 @@ describe("saveDeals", () => {
     const rows = await db.select().from(deals);
     expect(rows).toHaveLength(1);
     expect(rows[0].priceCents).toBe(800);
+    // $8 from a $20 "was" price at a small store: 60% off -> 30, $12 saved -> 6, store -> 9.
+    expect(rows[0].score).toBe(45);
+    expect(rows[0].verdict).toBeNull();
     expect(rows[0].url).toBe("https://example.com/deal/abc");
     expect(rows[0].firstSeenAt).toEqual(t1);
     expect(rows[0].lastCheckedAt).toEqual(t3);

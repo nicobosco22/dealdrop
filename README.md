@@ -42,6 +42,6 @@ npm test
 - [x] Step 3: main screen (filters, sortable table, card view)
 - [x] Step 4: categories, subcategories, spec filters
 - [ ] Step 5: more sources, duplicate merging (DealNews feed done; Best Buy and eBay wait for keys)
-- [ ] Step 6: price history check, fake-markdown flag, deal score
+- [x] Step 6: price history check, fake-markdown flag, deal score (uses the history DealNews reports; our own 90-day history is still building)
 - [ ] Step 7: watchlist, alerts, favorites
 - [ ] Step 8: put it online with a 10-minute timer

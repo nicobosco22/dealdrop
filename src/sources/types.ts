@@ -1,6 +1,7 @@
 // The one shape every data source must hand back.
 // Each source file (dealnews.ts, bestbuy.ts, ...) turns its own format into this.
 
+import type { Insights } from "@/lib/insights";
 import type { Specs } from "@/lib/specs";
 
 export type Category = "technology" | "house" | "furniture" | "lego";
@@ -23,6 +24,8 @@ export type SourceDeal = {
   priceCents: number;
   /** The store's "was" price in cents, if the source gives one. */
   listPriceCents: number | null;
+  /** Price-history facts the source states (all-time low, 90-day average), if any. */
+  insights: Insights | null;
   /** Link to the deal. Required: no link, no deal. */
   url: string;
   imageUrl: string | null;

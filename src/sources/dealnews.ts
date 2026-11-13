@@ -10,6 +10,7 @@
 //  - robots.txt asks for 2 seconds between requests. -> See CRAWL_DELAY_MS.
 
 import { XMLParser } from "fast-xml-parser";
+import { htmlToText, readPriceFacts } from "@/lib/insights";
 import { parsePriceToCents } from "@/lib/money";
 import { sortProduct } from "@/lib/sort-product";
 import type { SourceDeal } from "./types";
@@ -18,12 +19,33 @@ const HEADERS = { "User-Agent": "DealDrop/0.1 (personal deal tracker)" };
 const CRAWL_DELAY_MS = 2000;
 
 /** The newest deals overall, plus the sections that match DealDrop's categories. */
-export const DEALNEWS_FEEDS = [
-  "https://www.dealnews.com/?rss=1&sort=time",
-  "https://www.dealnews.com/c39/Computers/?rss=1",
-  "https://www.dealnews.com/c142/Electronics/?rss=1",
-  "https://www.dealnews.com/c196/Home-Garden/?rss=1",
+const SECTIONS = [
+  "", // newest deals overall
+  // Technology
+  "c39/Computers/",
+  "c49/Computers/Laptops/",
+  "c48/Computers/Desktops/",
+  "c75/Computers/Peripherals/Monitors/",
+  "c70/Computers/Peripherals/Input-Devices/",
+  "c93/Computers/Upgrades-Components/",
+  "c142/Electronics/",
+  "c159/Electronics/TVs/",
+  "c155/Electronics/Audio-Components/Headphones/",
+  "c147/Electronics/Audio-Components/Speakers/",
+  "c174/Electronics/Phones-Cell-Phones/Cell-Phones/",
+  "c714/Gaming-Toys/Video-Games/Consoles/",
+  "c712/Gaming-Toys/Video-Games/Accessories/",
+  "c304/Home-Garden/Appliances/",
+  "c642/Home-Garden/Kitchen/Small-Appliances/",
+  // House items and furniture
+  "c196/Home-Garden/",
+  "c360/Home-Garden/Bed-Bath/",
+  "c201/Home-Garden/Kitchen/",
+  "c200/Home-Garden/Decor/",
+  // LEGO lives in the toy section; every other toy is thrown away by the sorter
+  "c226/Gaming-Toys/Toys-Hobbies/",
 ];
+export const DEALNEWS_FEEDS = SECTIONS.map((path) => `https://www.dealnews.com/${path}?rss=1`);
 
 /** One feed item after the XML is read (only the fields we use). */
 export type DealNewsItem = {
@@ -31,6 +53,8 @@ export type DealNewsItem = {
   link?: string;
   guid?: string;
   pubDate?: string;
+  /** The editor's write-up, as HTML. */
+  description?: string;
   "dealnews:retailer"?: string;
   "dealnews:dealType"?: string;
   "dealnews:expires"?: string;
@@ -78,6 +102,11 @@ export function parseDealNewsItem(item: DealNewsItem): SourceDeal | null {
   const sorted = sortProduct({ title: productName });
   if (!sorted) return null;
 
+  // The first paragraph of the write-up is where the editor states the "was" price,
+  // the 90-day average and whether this is an all-time low.
+  const paragraph = /<p>([\s\S]*?)<\/p>/.exec(item.description ?? "")?.[1] ?? "";
+  const facts = readPriceFacts(htmlToText(paragraph), priceCents);
+
   return {
     source: "dealnews",
     sourceId: id,
@@ -88,8 +117,8 @@ export function parseDealNewsItem(item: DealNewsItem): SourceDeal | null {
     category: sorted.category,
     subcategory: sorted.subcategory,
     priceCents,
-    // DealNews headlines do not state a "was" price, so we do not invent one.
-    listPriceCents: null,
+    listPriceCents: facts.listPriceCents,
+    insights: facts.insights,
     url: item.link, // unchanged, as DealNews asks
     imageUrl: item["media:content"]?.["@_url"] ?? null,
     sourceUpdatedAt: validDate(item.pubDate),

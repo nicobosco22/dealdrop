@@ -17,7 +17,7 @@ describe("parseFilters", () => {
       minSize: null,
       connection: null,
       minVram: null,
-      sort: "newest",
+      sort: "best",
       dir: "desc",
       view: "table",
     });
@@ -53,7 +53,7 @@ describe("parseFilters", () => {
     const f = parseFilters({ cat: "toys", sub: "monitors", sort: "random", dir: "up", off: "150", min: "abc" });
     expect(f.category).toBeNull();
     expect(f.subcategory).toBeNull();
-    expect(f.sort).toBe("newest");
+    expect(f.sort).toBe("best");
     expect(f.dir).toBe("desc");
     expect(f.minOff).toBeNull();
     expect(f.minCents).toBeNull();

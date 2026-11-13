@@ -4,6 +4,7 @@
 import { and, eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { deals, pricePoints } from "@/db/schema";
+import { scoreDeal } from "@/lib/score";
 import type { SourceDeal } from "@/sources/types";
 
 export type SaveResult = { added: number; updated: number; priceChanges: number };
@@ -11,7 +12,10 @@ export type SaveResult = { added: number; updated: number; priceChanges: number 
 export async function saveDeals(db: Db, incoming: SourceDeal[], checkedAt: Date): Promise<SaveResult> {
   const result: SaveResult = { added: 0, updated: 0, priceChanges: 0 };
 
-  for (const deal of incoming) {
+  for (const incomingDeal of incoming) {
+    // The score and the "real deal" verdict are worked out fresh on every save.
+    const { score, verdict } = scoreDeal(incomingDeal);
+    const deal = { ...incomingDeal, score, verdict };
     const [existing] = await db
       .select({ id: deals.id, priceCents: deals.priceCents })
       .from(deals)

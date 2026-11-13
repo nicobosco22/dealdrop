@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { DealCards, DealTable, TopDrops } from "@/components/DealViews";
+import { FetchButton } from "@/components/FetchButton";
 import { FilterSidebar } from "@/components/FilterSidebar";
 import { SearchBox } from "@/components/SearchBox";
 import { getDb } from "@/db/client";
@@ -22,6 +23,7 @@ import { timeAgo } from "@/lib/time";
 import { fetchNow } from "./actions";
 
 const SORT_LABELS: Record<Sort, string> = {
+  best: "Best deal",
   newest: "Newest",
   price: "Price",
   off: "% off",
@@ -121,9 +123,7 @@ async function DealsBrowser({ searchParams }: { searchParams: Promise<RawParams>
           {facets.lastCheckedAt ? `Checked ${timeAgo(facets.lastCheckedAt, now)}` : "Not checked yet"}
         </span>
         <form action={fetchNow}>
-          <button className="rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-2 text-sm font-bold text-emerald-950 shadow-[0_0_24px_-6px_rgb(52_211_153/0.8)] transition hover:brightness-110 active:scale-95">
-            Fetch now
-          </button>
+          <FetchButton />
         </form>
       </header>
 
