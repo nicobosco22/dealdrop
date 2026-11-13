@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Facets } from "@/db/queries";
 import { CATEGORIES, TECH_SUBCATEGORIES } from "@/lib/categories";
-import { activeFilterCount, type Filters } from "@/lib/deal-filters";
+import { activeFilterCount, PANELS, RESOLUTIONS, type Filters } from "@/lib/deal-filters";
 
 const OFF_CHOICES = [10, 25, 50, 75];
 
@@ -74,6 +74,49 @@ export function FilterSidebar({ filters, facets }: { filters: Filters; facets: F
             </div>
           ))}
         </Section>
+
+        {/* Spec filters appear only inside the subcategory they belong to. */}
+        {filters.subcategory === "monitors" && (
+          <Section title="Monitor specs">
+            <Pick name="res" label="Resolution" value={filters.resolution} options={RESOLUTIONS.map((r) => [r, r])} />
+            <Pick name="panel" label="Panel type" value={filters.panel} options={PANELS.map((p) => [p, p])} />
+            <Pick
+              name="hz"
+              label="Refresh rate"
+              value={filters.minHz}
+              options={[60, 100, 120, 144, 165, 240, 360].map((n) => [String(n), `${n} Hz or more`])}
+            />
+            <Pick
+              name="size"
+              label="Screen size"
+              value={filters.minSize}
+              options={[24, 27, 32, 34, 40, 49].map((n) => [String(n), `${n}″ or bigger`])}
+            />
+          </Section>
+        )}
+        {filters.subcategory === "gaming-gear" && (
+          <Section title="Gear specs">
+            <Pick
+              name="conn"
+              label="Connection"
+              value={filters.connection}
+              options={[
+                ["wireless", "Wireless"],
+                ["wired", "Wired"],
+              ]}
+            />
+          </Section>
+        )}
+        {filters.subcategory === "pc-parts" && (
+          <Section title="Graphics card specs">
+            <Pick
+              name="vram"
+              label="Memory (VRAM)"
+              value={filters.minVram}
+              options={[8, 12, 16, 24].map((n) => [String(n), `${n} GB or more`])}
+            />
+          </Section>
+        )}
 
         <Section title="Price">
           <div className="flex items-center gap-2">
@@ -155,6 +198,32 @@ function Radio(props: { name: string; value: string; checked: boolean; label: st
       />
       <span className="flex-1">{props.label}</span>
       {props.count !== undefined && <span className="text-xs text-zinc-500">{props.count}</span>}
+    </label>
+  );
+}
+
+/** A small labelled drop-down list with an "Any" choice on top. */
+function Pick(props: {
+  name: string;
+  label: string;
+  value: string | number | null;
+  options: (readonly [string, string])[];
+}) {
+  return (
+    <label className="flex items-center gap-2">
+      <span className="w-24 shrink-0 text-zinc-400">{props.label}</span>
+      <select
+        name={props.name}
+        defaultValue={props.value ?? ""}
+        className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1"
+      >
+        <option value="">Any</option>
+        {props.options.map(([value, text]) => (
+          <option key={value} value={value}>
+            {text}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }

@@ -138,7 +138,8 @@ async function DealsBrowser({ searchParams }: { searchParams: Promise<RawParams>
           )}
 
           <p className="mt-4 text-xs text-zinc-600">
-            Every price comes straight from its source and links back to it. Game prices by CheapShark.
+            Every price comes straight from its source and links back to it. Game prices by CheapShark. Store
+            deals by DealNews.
           </p>
         </main>
       </div>

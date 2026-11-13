@@ -1,6 +1,7 @@
 // The database tables. Drizzle turns this file into SQL (see the drizzle/ folder).
 
-import { index, integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import type { Specs } from "@/lib/specs";
 
 /** One row per deal from one source. */
 export const deals = pgTable(
@@ -10,6 +11,8 @@ export const deals = pgTable(
     source: text("source").notNull(),
     sourceId: text("source_id").notNull(),
     title: text("title").notNull(),
+    brand: text("brand"),
+    specs: jsonb("specs").$type<Specs>(),
     store: text("store").notNull(),
     category: text("category").notNull(),
     subcategory: text("subcategory"),

@@ -23,7 +23,7 @@ npm test
 | `src/sources/` | One file per data source. Each turns that source's format into our one deal shape (`types.ts`). |
 | `src/jobs/` | `run-fetch.ts` runs every source; `save-deals.ts` saves deals and price history. |
 | `src/db/` | The database tables (`schema.ts`) and how we open the database (`client.ts`). |
-| `src/lib/` | Small helpers, like reading prices safely (`money.ts`). |
+| `src/lib/` | Small helpers: reading prices (`money.ts`), sorting products into categories (`classify.ts`), reading specs (`specs.ts`). |
 | `src/app/` | The web pages. |
 | `drizzle/` | The SQL that creates the tables. Made by `npm run db:generate`; don't edit by hand. |
 | `.data/` | Your local database. Not saved to GitHub. Delete it to start fresh. |
@@ -39,8 +39,8 @@ npm test
 - [x] Step 1: project, database, tests
 - [x] Step 2: first source working end to end (CheapShark game prices)
 - [x] Step 3: main screen (filters, sortable table, card view)
-- [ ] Step 4: categories, subcategories, spec filters
-- [ ] Step 5: more sources (Best Buy, eBay, deal feeds), duplicate merging
+- [x] Step 4: categories, subcategories, spec filters
+- [ ] Step 5: more sources, duplicate merging (DealNews feed done; Best Buy and eBay wait for keys)
 - [ ] Step 6: price history check, fake-markdown flag, deal score
 - [ ] Step 7: watchlist, alerts, favorites
 - [ ] Step 8: put it online with a 10-minute timer

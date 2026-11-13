@@ -1,6 +1,6 @@
 // Questions we ask the database for the main screen.
 
-import { and, asc, count, desc, eq, gte, ilike, inArray, lte, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import type { Filters } from "@/lib/deal-filters";
 import type { Db } from "./client";
 import { deals, type DealRow } from "./schema";
@@ -15,8 +15,9 @@ const savedCents = sql<number>`greatest(coalesce(${deals.listPriceCents}, 0) - $
 
 export const PAGE_LIMIT = 300;
 
-function whereFor(f: Filters): SQL | undefined {
-  const parts: SQL[] = [];
+function whereFor(f: Filters, now: Date): SQL | undefined {
+  // Deals whose end date has passed are hidden everywhere.
+  const parts: SQL[] = [or(isNull(deals.expiresAt), gt(deals.expiresAt, now))!];
   if (f.q) {
     // Escape % and _ so they are searched as plain characters.
     const safe = f.q.replace(/[\\%_]/g, (c) => `\\${c}`);
@@ -28,11 +29,22 @@ function whereFor(f: Filters): SQL | undefined {
   if (f.minCents !== null) parts.push(gte(deals.priceCents, f.minCents));
   if (f.maxCents !== null) parts.push(lte(deals.priceCents, f.maxCents));
   if (f.minOff !== null) parts.push(sql`${pctOff} >= ${f.minOff}`);
+  // Spec filters look inside the saved specs. A deal with that spec missing does not match.
+  if (f.resolution) parts.push(sql`${deals.specs}->>'resolution' = ${f.resolution}`);
+  if (f.panel) parts.push(sql`${deals.specs}->>'panel' = ${f.panel}`);
+  if (f.connection) parts.push(sql`${deals.specs}->>'connection' = ${f.connection}`);
+  if (f.minHz !== null) parts.push(sql`(${deals.specs}->>'refreshHz')::numeric >= ${f.minHz}`);
+  if (f.minSize !== null) parts.push(sql`(${deals.specs}->>'sizeInches')::numeric >= ${f.minSize}`);
+  if (f.minVram !== null) parts.push(sql`(${deals.specs}->>'vramGb')::numeric >= ${f.minVram}`);
   return parts.length ? and(...parts) : undefined;
 }
 
-export async function listDeals(db: Db, f: Filters): Promise<{ rows: DealRow[]; total: number }> {
-  const where = whereFor(f);
+export async function listDeals(
+  db: Db,
+  f: Filters,
+  now: Date = new Date(),
+): Promise<{ rows: DealRow[]; total: number }> {
+  const where = whereFor(f, now);
   const column = {
     newest: sql`coalesce(${deals.sourceUpdatedAt}, ${deals.firstSeenAt})`,
     price: deals.priceCents,

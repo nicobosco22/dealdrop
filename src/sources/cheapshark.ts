@@ -37,6 +37,8 @@ export function parseCheapSharkDeal(
     source: "cheapshark",
     sourceId: raw.dealID,
     title: raw.title.trim(),
+    brand: null,
+    specs: null,
     store,
     category: "technology",
     subcategory: "consoles-games",

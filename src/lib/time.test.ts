@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { timeAgo } from "./time";
+import { endsLabel, timeAgo } from "./time";
 
 const now = new Date("2026-11-12T12:00:00Z");
 const ago = (minutes: number) => new Date(now.getTime() - minutes * 60000);
@@ -15,5 +15,25 @@ describe("timeAgo", () => {
 
   it("never shows a time in the future", () => {
     expect(timeAgo(ago(-10), now)).toBe("just now");
+  });
+});
+
+describe("endsLabel", () => {
+  const inHours = (h: number) => new Date(now.getTime() + h * 3600000);
+
+  it("says how long is left", () => {
+    expect(endsLabel(inHours(0.5), now)).toBe("Ends in under 1 hr");
+    expect(endsLabel(inHours(5), now)).toBe("Ends in 5 hr");
+    expect(endsLabel(inHours(24), now)).toBe("Ends in 1 day");
+    expect(endsLabel(inHours(24 * 6), now)).toBe("Ends in 6 days");
+  });
+
+  it("says nothing when there is no date or it is far away", () => {
+    expect(endsLabel(null, now)).toBeNull();
+    expect(endsLabel(inHours(24 * 90), now)).toBeNull();
+  });
+
+  it("marks a deal that is over", () => {
+    expect(endsLabel(inHours(-1), now)).toBe("Ended");
   });
 });

@@ -18,10 +18,20 @@ export type Filters = {
   maxCents: number | null;
   /** Only show deals at least this many percent off. */
   minOff: number | null;
+  // Spec filters. Each one only works inside the subcategory it belongs to.
+  resolution: string | null; // monitors
+  panel: string | null; // monitors
+  minHz: number | null; // monitors
+  minSize: number | null; // monitors
+  connection: "wired" | "wireless" | null; // gaming gear
+  minVram: number | null; // PC parts (graphics cards)
   sort: Sort;
   dir: "asc" | "desc";
   view: "table" | "cards";
 };
+
+export const RESOLUTIONS = ["1080p", "1440p", "4K", "5K", "8K"] as const;
+export const PANELS = ["OLED", "IPS", "VA", "TN", "Mini-LED"] as const;
 
 export type RawParams = Record<string, string | string[] | undefined>;
 
@@ -63,6 +73,16 @@ export function parseFilters(raw: RawParams): Filters {
   const off = Number(one(raw.off));
   const minOff = Number.isInteger(off) && off > 0 && off < 100 ? off : null;
 
+  const wholeNumber = (key: string) => {
+    const n = Number(one(raw[key]));
+    return Number.isInteger(n) && n > 0 && n < 10000 ? n : null;
+  };
+  const pick = <T extends string>(key: string, allowed: readonly T[]): T | null => {
+    const v = one(raw[key]);
+    return (allowed as readonly string[]).includes(v) ? (v as T) : null;
+  };
+  const isMonitors = subcategory === "monitors";
+
   const sortText = one(raw.sort);
   const sort = (SORTS as readonly string[]).includes(sortText) ? (sortText as Sort) : "newest";
   const dirText = one(raw.dir);
@@ -76,6 +96,12 @@ export function parseFilters(raw: RawParams): Filters {
     minCents,
     maxCents,
     minOff,
+    resolution: isMonitors ? pick("res", RESOLUTIONS) : null,
+    panel: isMonitors ? pick("panel", PANELS) : null,
+    minHz: isMonitors ? wholeNumber("hz") : null,
+    minSize: isMonitors ? wholeNumber("size") : null,
+    connection: subcategory === "gaming-gear" ? pick("conn", ["wired", "wireless"] as const) : null,
+    minVram: subcategory === "pc-parts" ? wholeNumber("vram") : null,
     sort,
     dir,
     view: one(raw.view) === "cards" ? "cards" : "table",
@@ -106,6 +132,7 @@ export function activeFilterCount(f: Filters): number {
     f.stores.length +
     (f.minCents !== null ? 1 : 0) +
     (f.maxCents !== null ? 1 : 0) +
-    (f.minOff !== null ? 1 : 0)
+    (f.minOff !== null ? 1 : 0) +
+    [f.resolution, f.panel, f.minHz, f.minSize, f.connection, f.minVram].filter((v) => v !== null).length
   );
 }

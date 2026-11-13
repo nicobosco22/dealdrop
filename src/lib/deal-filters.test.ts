@@ -11,6 +11,12 @@ describe("parseFilters", () => {
       minCents: null,
       maxCents: null,
       minOff: null,
+      resolution: null,
+      panel: null,
+      minHz: null,
+      minSize: null,
+      connection: null,
+      minVram: null,
       sort: "newest",
       dir: "desc",
       view: "table",
@@ -66,6 +72,30 @@ describe("parseFilters", () => {
     expect(parseFilters({ sort: "off" }).dir).toBe("desc");
     expect(parseFilters({ sort: "title" }).dir).toBe("asc");
     expect(parseFilters({ sort: "price", dir: "desc" }).dir).toBe("desc");
+  });
+});
+
+describe("spec filters", () => {
+  it("reads monitor specs only inside Monitors", () => {
+    const raw = { cat: "technology", sub: "monitors", res: "4K", panel: "OLED", hz: "144", size: "27" };
+    expect(parseFilters(raw)).toMatchObject({ resolution: "4K", panel: "OLED", minHz: 144, minSize: 27 });
+    expect(parseFilters({ ...raw, sub: "audio" })).toMatchObject({
+      resolution: null,
+      panel: null,
+      minHz: null,
+      minSize: null,
+    });
+  });
+
+  it("reads wired/wireless only inside Gaming gear, and graphics memory only inside PC parts", () => {
+    expect(parseFilters({ cat: "technology", sub: "gaming-gear", conn: "wireless" }).connection).toBe("wireless");
+    expect(parseFilters({ cat: "technology", sub: "pc-parts", vram: "12" }).minVram).toBe(12);
+    expect(parseFilters({ cat: "technology", sub: "pc-parts", conn: "wireless" }).connection).toBeNull();
+  });
+
+  it("ignores values it does not know", () => {
+    const f = parseFilters({ cat: "technology", sub: "monitors", res: "9K", panel: "plasma", hz: "fast" });
+    expect(f).toMatchObject({ resolution: null, panel: null, minHz: null });
   });
 });
 

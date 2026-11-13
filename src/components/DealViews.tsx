@@ -5,7 +5,8 @@ import type { DealRow } from "@/db/schema";
 import { subcategoryLabel } from "@/lib/categories";
 import { DEFAULT_DIR, hrefWith, type Filters, type RawParams, type Sort } from "@/lib/deal-filters";
 import { formatCents, percentOff } from "@/lib/money";
-import { timeAgo } from "@/lib/time";
+import { specLabels, type Specs } from "@/lib/specs";
+import { endsLabel, timeAgo } from "@/lib/time";
 
 type ViewProps = { rows: DealRow[]; filters: Filters; raw: RawParams; now: Date };
 
@@ -14,6 +15,27 @@ function Thumb({ deal, className }: { deal: DealRow; className: string }) {
   if (!deal.imageUrl) return <div className={`${className} bg-zinc-800`} aria-hidden />;
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={deal.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className={className} />;
+}
+
+/** Small grey labels for key specs, like "27″ · 1440p · 165 Hz". */
+function SpecChips({ specs }: { specs: Specs | null }) {
+  const labels = specLabels(specs);
+  if (labels.length === 0) return null;
+  return (
+    <span className="inline-flex flex-wrap gap-1 align-middle">
+      {labels.map((label) => (
+        <span key={label} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-300">
+          {label}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** An amber "Ends in 3 days" note, shown only when the end date is close. */
+function EndsNote({ expiresAt, now }: { expiresAt: Date | null; now: Date }) {
+  const label = endsLabel(expiresAt, now);
+  return label ? <span className="ml-2 text-xs text-amber-400">{label}</span> : null;
 }
 
 function OffBadge({ off }: { off: number | null }) {
@@ -84,7 +106,11 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
                       >
                         {deal.title}
                       </a>
-                      <span className="text-xs text-zinc-500">{subcategoryLabel(deal.subcategory)}</span>
+                      <span className="text-xs text-zinc-500">
+                        {[deal.brand, subcategoryLabel(deal.subcategory)].filter(Boolean).join(" · ")}{" "}
+                        <SpecChips specs={deal.specs} />
+                        <EndsNote expiresAt={deal.expiresAt} now={now} />
+                      </span>
                     </div>
                   </div>
                 </td>
@@ -140,6 +166,7 @@ export function DealCards({ rows, now }: ViewProps) {
                   {deal.store}
                   {deal.subcategory ? ` · ${subcategoryLabel(deal.subcategory)}` : ""}
                 </p>
+                <SpecChips specs={deal.specs} />
                 <div className="mt-auto flex items-baseline gap-2 pt-2">
                   <span className="text-lg font-semibold tabular-nums text-emerald-400">
                     {formatCents(deal.priceCents)}
@@ -153,7 +180,10 @@ export function DealCards({ rows, now }: ViewProps) {
                     <OffBadge off={off} />
                   </span>
                 </div>
-                <p className="text-xs text-zinc-600">Checked {timeAgo(deal.lastCheckedAt, now)}</p>
+                <p className="text-xs text-zinc-600">
+                  Checked {timeAgo(deal.lastCheckedAt, now)}
+                  <EndsNote expiresAt={deal.expiresAt} now={now} />
+                </p>
               </div>
             </a>
           </li>

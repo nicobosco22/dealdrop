@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { saveDeals } from "@/jobs/save-deals";
 import { parseFilters, type RawParams } from "@/lib/deal-filters";
+import { extractSpecs } from "@/lib/specs";
 import type { SourceDeal } from "@/sources/types";
 import { openDb, type Db } from "./client";
 import { getFacets, listDeals } from "./queries";
@@ -10,6 +11,8 @@ function deal(id: string, over: Partial<SourceDeal>): SourceDeal {
     source: "test",
     sourceId: id,
     title: id,
+    brand: null,
+    specs: extractSpecs(over.subcategory ?? null, id),
     store: "Steam",
     category: "technology",
     subcategory: "consoles-games",
@@ -85,12 +88,67 @@ describe("listDeals", () => {
   });
 });
 
+describe("spec filters", () => {
+  beforeAll(async () => {
+    await saveDeals(
+      db,
+      [
+        deal('LG 27" QHD 165Hz IPS Monitor', { subcategory: "monitors", store: "Newegg" }),
+        deal('Dell 32-inch 4K 60Hz VA Monitor', { subcategory: "monitors", store: "Newegg" }),
+        deal("Razer Viper Wireless Mouse 30K DPI", { subcategory: "gaming-gear", store: "Newegg" }),
+        deal("Logitech G203 Wired Mouse", { subcategory: "gaming-gear", store: "Newegg" }),
+        deal("MSI RTX 5070 Ti 16GB", { subcategory: "pc-parts", store: "Newegg" }),
+        deal("Zotac RTX 4060 8GB", { subcategory: "pc-parts", store: "Newegg" }),
+      ],
+      new Date("2026-11-12T10:00:00Z"),
+    );
+  });
+  const monitors = { cat: "technology", sub: "monitors", sort: "title" };
+
+  it("filters monitors by resolution, panel, refresh rate and size", async () => {
+    expect(await titles({ ...monitors, res: "4K" })).toEqual(["Dell 32-inch 4K 60Hz VA Monitor"]);
+    expect(await titles({ ...monitors, panel: "IPS" })).toEqual(['LG 27" QHD 165Hz IPS Monitor']);
+    expect(await titles({ ...monitors, hz: "144" })).toEqual(['LG 27" QHD 165Hz IPS Monitor']);
+    expect(await titles({ ...monitors, size: "30" })).toEqual(["Dell 32-inch 4K 60Hz VA Monitor"]);
+  });
+
+  it("leaves out monitors whose title did not state that spec", async () => {
+    // "OLED Monitor 27" from the first batch has no refresh rate in its title.
+    expect(await titles({ ...monitors, hz: "60" })).not.toContain("OLED Monitor 27");
+    expect(await titles({ ...monitors, panel: "OLED" })).toEqual(["OLED Monitor 27"]);
+  });
+
+  it("filters mice by wired or wireless", async () => {
+    expect(await titles({ cat: "technology", sub: "gaming-gear", conn: "wireless" })).toEqual([
+      "Razer Viper Wireless Mouse 30K DPI",
+    ]);
+  });
+
+  it("filters graphics cards by memory", async () => {
+    expect(await titles({ cat: "technology", sub: "pc-parts", vram: "12" })).toEqual(["MSI RTX 5070 Ti 16GB"]);
+  });
+});
+
+describe("ended deals", () => {
+  it("hides a deal once its end date has passed", async () => {
+    await saveDeals(
+      db,
+      [deal("Flash Sale Game", { expiresAt: new Date("2026-11-20T00:00:00Z") })],
+      new Date("2026-11-12T10:00:00Z"),
+    );
+    const at = async (when: string) =>
+      (await listDeals(db, parseFilters({ q: "flash sale" }), new Date(when))).rows.length;
+    expect(await at("2026-11-19T00:00:00Z")).toBe(1);
+    expect(await at("2026-11-21T00:00:00Z")).toBe(0);
+  });
+});
+
 describe("getFacets", () => {
   it("counts deals per store, category and subcategory", async () => {
     const facets = await getFacets(db);
-    expect(facets.stores[0]).toEqual({ name: "Target", count: 2 });
-    expect(facets.categories).toEqual({ technology: 3, lego: 1, house: 1 });
-    expect(facets.subcategories).toEqual({ "consoles-games": 2, monitors: 1 });
+    expect(facets.stores[0]).toEqual({ name: "Newegg", count: 6 });
+    expect(facets.categories).toEqual({ technology: 10, lego: 1, house: 1 });
+    expect(facets.subcategories).toEqual({ "consoles-games": 3, monitors: 3, "gaming-gear": 2, "pc-parts": 2 });
     expect(facets.lastCheckedAt).toEqual(new Date("2026-11-12T10:00:00Z"));
   });
 });

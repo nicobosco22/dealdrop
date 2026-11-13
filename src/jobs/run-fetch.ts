@@ -3,11 +3,13 @@
 
 import type { Db } from "@/db/client";
 import { fetchCheapSharkDeals } from "@/sources/cheapshark";
+import { fetchDealNewsDeals } from "@/sources/dealnews";
 import type { SourceDeal } from "@/sources/types";
 import { saveDeals, type SaveResult } from "./save-deals";
 
 const SOURCES: Record<string, () => Promise<SourceDeal[]>> = {
   cheapshark: fetchCheapSharkDeals,
+  dealnews: fetchDealNewsDeals,
 };
 
 export type FetchReport = Record<string, SaveResult | { error: string }>;

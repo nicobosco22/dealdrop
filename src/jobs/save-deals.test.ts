@@ -8,6 +8,8 @@ const sample: SourceDeal = {
   source: "test",
   sourceId: "abc",
   title: "Test Game",
+  brand: null,
+  specs: null,
   store: "Steam",
   category: "technology",
   subcategory: "consoles-games",
