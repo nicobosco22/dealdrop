@@ -1,0 +1,176 @@
+"use client";
+// The filter sidebar. It is a plain form: choosing something reloads the page
+// with the choice in the address, and the server does the filtering.
+
+import Link from "next/link";
+import { useState } from "react";
+import type { Facets } from "@/db/queries";
+import { CATEGORIES, TECH_SUBCATEGORIES } from "@/lib/categories";
+import { activeFilterCount, type Filters } from "@/lib/deal-filters";
+
+const OFF_CHOICES = [10, 25, 50, 75];
+
+export function FilterSidebar({ filters, facets }: { filters: Filters; facets: Facets }) {
+  const [open, setOpen] = useState(false);
+  const active = activeFilterCount(filters);
+  const dollars = (cents: number | null) => (cents === null ? "" : String(cents / 100));
+
+  return (
+    <form
+      id="filters"
+      method="get"
+      action="/"
+      className="text-sm"
+      // Ticking a box or picking from a list applies right away. Typed prices wait for Apply / Enter.
+      onChange={(e) => {
+        const el = e.target as unknown as HTMLInputElement;
+        if (el.type === "radio" || el.type === "checkbox" || el.tagName === "SELECT") {
+          e.currentTarget.requestSubmit();
+        }
+      }}
+    >
+      {/* Keep the current sort and view when filters change. */}
+      <input type="hidden" name="sort" value={filters.sort} />
+      <input type="hidden" name="dir" value={filters.dir} />
+      {filters.view === "cards" && <input type="hidden" name="view" value="cards" />}
+
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className="mb-3 w-full rounded-md border border-zinc-700 px-3 py-2 text-left font-medium lg:hidden"
+      >
+        Filters{active ? ` (${active})` : ""} <span className="float-right">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {/* The key makes the boxes redraw when filters change from outside (for example "Clear"). */}
+      <div key={JSON.stringify(filters)} className={`${open ? "block" : "hidden"} space-y-5 lg:block`}>
+        <Section title="Category">
+          <Radio name="cat" value="" checked={!filters.category} label="All" />
+          {CATEGORIES.map((c) => (
+            <div key={c.id}>
+              <Radio
+                name="cat"
+                value={c.id}
+                checked={filters.category === c.id}
+                label={c.label}
+                count={facets.categories[c.id] ?? 0}
+              />
+              {c.id === "technology" && filters.category === "technology" && (
+                <div className="ml-5 mt-1 space-y-1 border-l border-zinc-800 pl-3">
+                  <Radio name="sub" value="" checked={!filters.subcategory} label="All tech" />
+                  {TECH_SUBCATEGORIES.map((s) => (
+                    <Radio
+                      key={s.id}
+                      name="sub"
+                      value={s.id}
+                      checked={filters.subcategory === s.id}
+                      label={s.label}
+                      count={facets.subcategories[s.id] ?? 0}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </Section>
+
+        <Section title="Price">
+          <div className="flex items-center gap-2">
+            <PriceBox name="min" placeholder="Min" defaultValue={dollars(filters.minCents)} />
+            <span className="text-zinc-500">to</span>
+            <PriceBox name="max" placeholder="Max" defaultValue={dollars(filters.maxCents)} />
+          </div>
+        </Section>
+
+        <Section title="Discount">
+          <select
+            name="off"
+            defaultValue={filters.minOff ?? ""}
+            aria-label="Minimum percent off"
+            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5"
+          >
+            <option value="">Any</option>
+            {OFF_CHOICES.map((n) => (
+              <option key={n} value={n}>
+                {n}% off or more
+              </option>
+            ))}
+          </select>
+        </Section>
+
+        <Section title="Store">
+          <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+            {facets.stores.length === 0 && <p className="text-zinc-500">No stores yet.</p>}
+            {facets.stores.map((s) => (
+              <label key={s.name} className="flex cursor-pointer items-center gap-2 hover:text-white">
+                <input
+                  type="checkbox"
+                  name="store"
+                  value={s.name}
+                  defaultChecked={filters.stores.includes(s.name)}
+                  className="accent-emerald-500"
+                />
+                <span className="flex-1 truncate">{s.name}</span>
+                <span className="text-xs text-zinc-500">{s.count}</span>
+              </label>
+            ))}
+          </div>
+        </Section>
+
+        <div className="flex gap-2">
+          <button className="flex-1 rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-500">
+            Apply
+          </button>
+          <Link
+            href={filters.view === "cards" ? "/?view=cards" : "/"}
+            className="rounded-md border border-zinc-700 px-3 py-1.5 text-zinc-300 hover:bg-zinc-800"
+          >
+            Clear
+          </Link>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <fieldset>
+      <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">{title}</legend>
+      <div className="space-y-1">{children}</div>
+    </fieldset>
+  );
+}
+
+function Radio(props: { name: string; value: string; checked: boolean; label: string; count?: number }) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 hover:text-white">
+      <input
+        type="radio"
+        name={props.name}
+        value={props.value}
+        defaultChecked={props.checked}
+        className="accent-emerald-500"
+      />
+      <span className="flex-1">{props.label}</span>
+      {props.count !== undefined && <span className="text-xs text-zinc-500">{props.count}</span>}
+    </label>
+  );
+}
+
+function PriceBox(props: { name: string; placeholder: string; defaultValue: string }) {
+  return (
+    <label className="flex flex-1 items-center rounded-md border border-zinc-700 bg-zinc-900 px-2">
+      <span className="text-zinc-500">$</span>
+      <input
+        name={props.name}
+        inputMode="decimal"
+        placeholder={props.placeholder}
+        aria-label={`${props.placeholder} price`}
+        defaultValue={props.defaultValue}
+        className="w-full min-w-0 bg-transparent px-1 py-1.5 outline-none"
+      />
+    </label>
+  );
+}
