@@ -1,0 +1,88 @@
+import { describe, expect, it } from "vitest";
+import { openDb } from "@/db/client";
+import { deals, watches } from "@/db/schema";
+import type { SourceDeal } from "@/sources/types";
+import { buildAlertMessage, findNewMatches, sendAlerts } from "./notify";
+import { saveDeals } from "./save-deals";
+
+function deal(title: string, priceCents: number, over: Partial<SourceDeal> = {}): SourceDeal {
+  return {
+    source: "test",
+    sourceId: title,
+    title,
+    brand: null,
+    specs: null,
+    store: "Best Buy",
+    category: "technology",
+    subcategory: "monitors",
+    priceCents,
+    listPriceCents: null,
+    insights: null,
+    url: `https://example.com/${encodeURIComponent(title)}`,
+    imageUrl: null,
+    sourceUpdatedAt: null,
+    expiresAt: null,
+    ...over,
+  };
+}
+
+describe("watchlist alerts", () => {
+  it("finds only deals first seen after the last alert, under the top price", async () => {
+    const db = await openDb();
+    const before = new Date("2026-11-12T09:00:00Z");
+    const watchMade = new Date("2026-11-12T10:00:00Z");
+    const after = new Date("2026-11-12T11:00:00Z");
+
+    await saveDeals(db, [deal("Old OLED Monitor", 40000)], before);
+    const [watch] = await db
+      .insert(watches)
+      .values({ keyword: "oled monitor", maxPriceCents: 50000, createdAt: watchMade, lastNotifiedAt: watchMade })
+      .returning();
+    await saveDeals(
+      db,
+      [
+        deal("New 27 inch OLED Gaming Monitor", 45000),
+        deal("Pricey OLED Monitor", 90000),
+        deal("New IPS Monitor", 20000),
+      ],
+      after,
+    );
+
+    const matches = await findNewMatches(db, watch, new Date("2026-11-12T12:00:00Z"));
+    expect(matches.map((d) => d.title)).toEqual(["New 27 inch OLED Gaming Monitor"]);
+  });
+
+  it("writes a clear message with price, discount, store and link", async () => {
+    const db = await openDb();
+    await saveDeals(
+      db,
+      [deal("LG OLED Monitor", 45000, { listPriceCents: 90000, insights: { atAllTimeLow: true } })],
+      new Date("2026-11-12T11:00:00Z"),
+    );
+    const rows = await db.select().from(deals);
+    expect(buildAlertMessage({ keyword: "oled monitor", maxPriceCents: 50000 }, rows)).toBe(
+      'DealDrop: 1 new deal for "oled monitor" under $500.00\n' +
+        "• $450.00 (-50%) at Best Buy · all-time low: LG OLED Monitor\n" +
+        "  https://example.com/LG%20OLED%20Monitor",
+    );
+  });
+
+  it("shortens a long list", async () => {
+    const db = await openDb();
+    await saveDeals(db, Array.from({ length: 7 }, (_, i) => deal(`Monitor ${i}`, 10000 + i)), new Date("2026-11-12T11:00:00Z"));
+    const message = buildAlertMessage({ keyword: "monitor", maxPriceCents: null }, await db.select().from(deals));
+    expect(message).toContain('7 new deals for "monitor"\n');
+    expect(message.match(/•/g)).toHaveLength(5);
+    expect(message).toContain("…and 2 more");
+  });
+
+  it("sends nothing when no webhook is set", async () => {
+    const saved = process.env.DISCORD_WEBHOOK_URL;
+    delete process.env.DISCORD_WEBHOOK_URL;
+    try {
+      expect(await sendAlerts(await openDb())).toEqual({ sent: 0, skipped: "no webhook set" });
+    } finally {
+      if (saved !== undefined) process.env.DISCORD_WEBHOOK_URL = saved;
+    }
+  });
+});

@@ -4,7 +4,9 @@ import { parseFilters, type RawParams } from "@/lib/deal-filters";
 import { extractSpecs } from "@/lib/specs";
 import type { SourceDeal } from "@/sources/types";
 import { openDb, type Db } from "./client";
-import { getFacets, getStats, getTopDrops, listDeals } from "./queries";
+import { eq } from "drizzle-orm";
+import { getFacets, getStats, getTopDrops, listDeals, listWatches } from "./queries";
+import { deals, watches } from "./schema";
 
 function deal(id: string, over: Partial<SourceDeal>): SourceDeal {
   return {
@@ -164,7 +166,7 @@ describe("getStats and getTopDrops", () => {
 
   it("counts live deals, stores, the best discount and new deals", async () => {
     const stats = await getStats(db, now);
-    expect(stats).toEqual({ live: 12, stores: 5, bestOff: 75, newToday: 12 });
+    expect(stats).toEqual({ live: 12, stores: 5, bestOff: 75, newToday: 12, saved: 0 });
   });
 
   it("stops counting a deal after it ends, and 'new' after a day", async () => {
@@ -180,5 +182,49 @@ describe("getStats and getTopDrops", () => {
     const all = await getTopDrops(db, 50, now);
     expect(all.map((d) => d.title)).not.toContain("LEGO Star Wars X-Wing"); // no "was" price
     expect(all.map((d) => d.title)).not.toContain("100% Cotton_Towels"); // was = now
+  });
+});
+
+describe("search words", () => {
+  it("finds titles that have every word, in any order", async () => {
+    expect(await titles({ q: "monitor oled" })).toEqual(["OLED Monitor 27"]);
+    expect(await titles({ q: "monitor lg ips", sort: "title" })).toEqual(['LG 27" QHD 165Hz IPS Monitor']);
+    expect(await titles({ q: "monitor toaster" })).toEqual([]);
+  });
+});
+
+describe("favorites", () => {
+  it("shows only saved deals when the favorites filter is on", async () => {
+    await db.update(deals).set({ favorite: true }).where(eq(deals.title, "Beta Game"));
+    expect(await titles({ fav: "1" })).toEqual(["Beta Game"]);
+  });
+
+  it("keeps a deal saved when the deal is fetched again", async () => {
+    await saveDeals(db, [deal("Beta Game", { priceCents: 1400, listPriceCents: 2000, store: "GOG" })], new Date("2026-11-12T11:00:00Z"));
+    expect(await titles({ fav: "1" })).toEqual(["Beta Game"]);
+  });
+});
+
+describe("listWatches", () => {
+  it("counts matches under the top price and lists the best ones", async () => {
+    await db.insert(watches).values([
+      { keyword: "monitor", maxPriceCents: null },
+      { keyword: "oled monitor", maxPriceCents: 50000 },
+      { keyword: "rtx", maxPriceCents: 150000 },
+    ]);
+    const list = await listWatches(db, new Date("2026-11-12T12:00:00Z"));
+    expect(list.map((w) => [w.keyword, w.matchCount])).toEqual([
+      ["monitor", 3],
+      ["oled monitor", 0], // the only OLED monitor costs $600, over the $500 top price
+      ["rtx", 2],
+    ]);
+    expect(list[0].newCount).toBe(3);
+    expect(list[0].top).toHaveLength(3);
+  });
+
+  it("stops counting a match as new after a day", async () => {
+    const list = await listWatches(db, new Date("2026-11-15T12:00:00Z"));
+    expect(list[0].matchCount).toBe(3);
+    expect(list[0].newCount).toBe(0);
   });
 });

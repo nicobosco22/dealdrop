@@ -3,7 +3,7 @@
 import { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import type { Filters } from "@/lib/deal-filters";
 import type { Db } from "./client";
-import { deals, type DealRow } from "./schema";
+import { deals, watches, type DealRow, type WatchRow } from "./schema";
 
 /** Percent off, worked out by the database. 0 when there is no real "was" price. */
 const pctOff = sql<number>`case when ${deals.listPriceCents} > ${deals.priceCents}
@@ -15,14 +15,32 @@ const savedCents = sql<number>`greatest(coalesce(${deals.listPriceCents}, 0) - $
 
 export const PAGE_LIMIT = 300;
 
+/**
+ * Search rule: every word must appear somewhere in the title, in any order.
+ * So "oled monitor" finds "Samsung 27-inch OLED Gaming Monitor".
+ */
+export function titleHasWords(text: string): SQL[] {
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 8)
+    .map((word) => {
+      // Escape % and _ so they are searched as plain characters.
+      const safe = word.replace(/[\\%_]/g, (c) => `\\${c}`);
+      return ilike(deals.title, `%${safe}%`);
+    });
+}
+
+/** True for deals that have not ended. */
+export function notEnded(now: Date): SQL {
+  return or(isNull(deals.expiresAt), gt(deals.expiresAt, now))!;
+}
+
 function whereFor(f: Filters, now: Date): SQL | undefined {
   // Deals whose end date has passed are hidden everywhere.
   const parts: SQL[] = [or(isNull(deals.expiresAt), gt(deals.expiresAt, now))!];
-  if (f.q) {
-    // Escape % and _ so they are searched as plain characters.
-    const safe = f.q.replace(/[\\%_]/g, (c) => `\\${c}`);
-    parts.push(ilike(deals.title, `%${safe}%`));
-  }
+  parts.push(...titleHasWords(f.q));
+  if (f.favorites) parts.push(eq(deals.favorite, true));
   if (f.category) parts.push(eq(deals.category, f.category));
   if (f.subcategory) parts.push(eq(deals.subcategory, f.subcategory));
   if (f.stores.length) parts.push(inArray(deals.store, f.stores));
@@ -91,7 +109,7 @@ export async function getFacets(db: Db): Promise<Facets> {
   return { stores, categories, subcategories, lastCheckedAt: latest?.at ? new Date(latest.at) : null };
 }
 
-export type Stats = { live: number; stores: number; bestOff: number; newToday: number };
+export type Stats = { live: number; stores: number; bestOff: number; newToday: number; saved: number };
 
 /** The headline numbers at the top of the home page. Ended deals are not counted. */
 export async function getStats(db: Db, now: Date = new Date()): Promise<Stats> {
@@ -102,6 +120,7 @@ export async function getStats(db: Db, now: Date = new Date()): Promise<Stats> {
       stores: sql<number>`count(distinct ${deals.store})`,
       bestOff: sql<number>`coalesce(max(${pctOff}), 0)`,
       newToday: sql<number>`count(*) filter (where ${deals.firstSeenAt} > ${dayAgo})`,
+      saved: sql<number>`count(*) filter (where ${deals.favorite})`,
     })
     .from(deals)
     .where(or(isNull(deals.expiresAt), gt(deals.expiresAt, now)));
@@ -110,6 +129,7 @@ export async function getStats(db: Db, now: Date = new Date()): Promise<Stats> {
     stores: Number(row.stores),
     bestOff: Number(row.bestOff),
     newToday: Number(row.newToday),
+    saved: Number(row.saved),
   };
 }
 
@@ -121,4 +141,33 @@ export async function getTopDrops(db: Db, limit: number, now: Date = new Date())
     .where(and(or(isNull(deals.expiresAt), gt(deals.expiresAt, now)), sql`${pctOff} > 0`))
     .orderBy(desc(pctOff), desc(savedCents), asc(deals.id))
     .limit(limit);
+}
+
+export type WatchWithMatches = WatchRow & { matchCount: number; newCount: number; top: DealRow[] };
+
+/** The rule for "this deal matches this watch": all the words, under the top price, not ended. */
+export function watchWhere(watch: Pick<WatchRow, "keyword" | "maxPriceCents">, now: Date): SQL {
+  const parts = [notEnded(now), ...titleHasWords(watch.keyword)];
+  if (watch.maxPriceCents !== null) parts.push(lte(deals.priceCents, watch.maxPriceCents));
+  return and(...parts)!;
+}
+
+/** Every watch, with how many deals match, how many are new in the last day, and the best three. */
+export async function listWatches(db: Db, now: Date = new Date()): Promise<WatchWithMatches[]> {
+  const dayAgo = new Date(now.getTime() - 24 * 3600 * 1000);
+  const all = await db.select().from(watches).orderBy(asc(watches.createdAt), asc(watches.id));
+  const result: WatchWithMatches[] = [];
+  for (const watch of all) {
+    const where = watchWhere(watch, now);
+    const [counts] = await db
+      .select({
+        matchCount: count(),
+        newCount: sql<number>`count(*) filter (where ${deals.firstSeenAt} > ${dayAgo})`,
+      })
+      .from(deals)
+      .where(where);
+    const top = await db.select().from(deals).where(where).orderBy(desc(deals.score), asc(deals.priceCents)).limit(3);
+    result.push({ ...watch, matchCount: Number(counts.matchCount), newCount: Number(counts.newCount), top });
+  }
+  return result;
 }

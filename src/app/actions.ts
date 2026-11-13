@@ -1,13 +1,42 @@
 "use server";
-// Things the page can ask the server to do.
+// Things the pages can ask the server to do.
 
+import { eq, not } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { getDb } from "@/db/client";
+import { deals, watches } from "@/db/schema";
+import { sendAlerts } from "@/jobs/notify";
 import { runFetch } from "@/jobs/run-fetch";
+import { parsePriceToCents } from "@/lib/money";
 
-/** The "Fetch deals now" button: pull from every source, then redraw the page. */
+/** The "Fetch now" button: pull from every source, send any watchlist alerts, then redraw the page. */
 export async function fetchNow() {
-  const report = await runFetch(await getDb());
-  console.log("fetch report", report);
+  const db = await getDb();
+  const report = await runFetch(db);
+  const alerts = await sendAlerts(db);
+  console.log("fetch report", report, "alerts", alerts);
+  refresh();
+}
+
+/** The heart button: save a deal, or un-save it if it was saved. */
+export async function toggleFavorite(dealId: number) {
+  const db = await getDb();
+  await db.update(deals).set({ favorite: not(deals.favorite) }).where(eq(deals.id, dealId));
+  refresh();
+}
+
+/** Add a watch from the watchlist form. Blank or over-long keywords are ignored. */
+export async function addWatch(formData: FormData) {
+  const keyword = String(formData.get("keyword") ?? "").trim().replace(/\s+/g, " ").slice(0, 80);
+  if (!keyword) return;
+  const maxPriceCents = parsePriceToCents(String(formData.get("max") ?? ""));
+  const db = await getDb();
+  await db.insert(watches).values({ keyword, maxPriceCents: maxPriceCents || null });
+  refresh();
+}
+
+export async function removeWatch(watchId: number) {
+  const db = await getDb();
+  await db.delete(watches).where(eq(watches.id, watchId));
   refresh();
 }

@@ -1,6 +1,6 @@
 // The database tables. Drizzle turns this file into SQL (see the drizzle/ folder).
 
-import { index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { Insights } from "@/lib/insights";
 import type { Specs } from "@/lib/specs";
 
@@ -24,6 +24,8 @@ export const deals = pgTable(
     score: integer("score").notNull().default(0),
     /** The "real deal" check result: all-time-low, below-average, inflated, or empty. */
     verdict: text("verdict"),
+    /** You saved this deal with the heart button. */
+    favorite: boolean("favorite").notNull().default(false),
     url: text("url").notNull(),
     imageUrl: text("image_url"),
     sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }),
@@ -54,4 +56,15 @@ export const pricePoints = pgTable(
   (t) => [index("price_points_deal").on(t.dealId, t.seenAt)],
 );
 
+/** The watchlist: words to look for, with an optional top price. */
+export const watches = pgTable("watches", {
+  id: serial("id").primaryKey(),
+  keyword: text("keyword").notNull(),
+  maxPriceCents: integer("max_price_cents"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  /** Matches first seen after this time have not been announced yet. */
+  lastNotifiedAt: timestamp("last_notified_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type DealRow = typeof deals.$inferSelect;
+export type WatchRow = typeof watches.$inferSelect;

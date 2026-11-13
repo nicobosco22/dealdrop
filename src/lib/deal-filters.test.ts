@@ -11,6 +11,7 @@ describe("parseFilters", () => {
       minCents: null,
       maxCents: null,
       minOff: null,
+      favorites: false,
       resolution: null,
       panel: null,
       minHz: null,
@@ -72,6 +73,14 @@ describe("parseFilters", () => {
     expect(parseFilters({ sort: "off" }).dir).toBe("desc");
     expect(parseFilters({ sort: "title" }).dir).toBe("asc");
     expect(parseFilters({ sort: "price", dir: "desc" }).dir).toBe("desc");
+  });
+});
+
+describe("favorites filter", () => {
+  it("is on only for fav=1", () => {
+    expect(parseFilters({ fav: "1" }).favorites).toBe(true);
+    expect(parseFilters({ fav: "yes" }).favorites).toBe(false);
+    expect(activeFilterCount(parseFilters({ fav: "1" }))).toBe(1);
   });
 });
 

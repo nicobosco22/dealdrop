@@ -18,6 +18,8 @@ export type Filters = {
   maxCents: number | null;
   /** Only show deals at least this many percent off. */
   minOff: number | null;
+  /** Only show deals saved with the heart button. */
+  favorites: boolean;
   // Spec filters. Each one only works inside the subcategory it belongs to.
   resolution: string | null; // monitors
   panel: string | null; // monitors
@@ -97,6 +99,7 @@ export function parseFilters(raw: RawParams): Filters {
     minCents,
     maxCents,
     minOff,
+    favorites: one(raw.fav) === "1",
     resolution: isMonitors ? pick("res", RESOLUTIONS) : null,
     panel: isMonitors ? pick("panel", PANELS) : null,
     minHz: isMonitors ? wholeNumber("hz") : null,
@@ -134,6 +137,7 @@ export function activeFilterCount(f: Filters): number {
     (f.minCents !== null ? 1 : 0) +
     (f.maxCents !== null ? 1 : 0) +
     (f.minOff !== null ? 1 : 0) +
+    (f.favorites ? 1 : 0) +
     [f.resolution, f.panel, f.minHz, f.minSize, f.connection, f.minVram].filter((v) => v !== null).length
   );
 }

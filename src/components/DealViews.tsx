@@ -2,6 +2,7 @@
 // and the big "Top drops" cards on the home page.
 
 import Link from "next/link";
+import { toggleFavorite } from "@/app/actions";
 import type { DealRow } from "@/db/schema";
 import { subcategoryLabel } from "@/lib/categories";
 import { DEFAULT_DIR, hrefWith, type Filters, type RawParams, type Sort } from "@/lib/deal-filters";
@@ -120,6 +121,24 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
+/** The heart button. Click to save a deal; click again to un-save it. */
+function Heart({ deal, className = "" }: { deal: DealRow; className?: string }) {
+  return (
+    <form action={toggleFavorite.bind(null, deal.id)} className={className}>
+      <button
+        aria-label={deal.favorite ? "Remove from saved" : "Save this deal"}
+        aria-pressed={deal.favorite}
+        title={deal.favorite ? "Saved. Click to remove." : "Save this deal"}
+        className={`grid h-7 w-7 place-items-center rounded-full text-base leading-none transition hover:scale-110 active:scale-95 ${
+          deal.favorite ? "text-rose-400 drop-shadow-[0_0_6px_rgb(251_113_133/0.8)]" : "text-zinc-600 hover:text-rose-300"
+        }`}
+      >
+        {deal.favorite ? "♥" : "♡"}
+      </button>
+    </form>
+  );
+}
+
 function NewTag() {
   return (
     <span className="rounded-md bg-cyan-400/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cyan-300">
@@ -209,7 +228,8 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
                       hot ? "bg-rose-400" : "bg-emerald-400"
                     }`}
                   />
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Heart deal={deal} className="shrink-0" />
                     <Thumb deal={deal} className="h-9 w-16 shrink-0 rounded-md" />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -274,7 +294,9 @@ export function DealCards({ rows, now }: ViewProps) {
       {rows.map((deal, index) => {
         const off = percentOff(deal.priceCents, deal.listPriceCents);
         return (
-          <li key={deal.id} className="rise" style={{ "--i": index } as React.CSSProperties}>
+          <li key={deal.id} className="rise relative" style={{ "--i": index } as React.CSSProperties}>
+            {/* The heart sits on top of the card, outside the link, so clicking it does not open the deal. */}
+            <Heart deal={deal} className="absolute right-2 top-2 z-10 rounded-full bg-black/60 backdrop-blur" />
             <a
               href={deal.url}
               target="_blank"
