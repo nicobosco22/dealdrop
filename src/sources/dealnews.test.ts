@@ -60,11 +60,12 @@ describe("parseDealNewsItem", () => {
   });
 
   it("uses the last price in a title that says 'for' twice", () => {
-    expect(parseDealNewsItem(find("Ocarina of Time"))).toMatchObject({
-      subcategory: "consoles-games",
-      priceCents: 5500,
-      store: "Costco",
-    });
+    const item = { ...find("Gourmia"), title: "KitchenAid Stand Mixer for Baking for $199 + free shipping" };
+    expect(parseDealNewsItem(item)).toMatchObject({ subcategory: "appliances", priceCents: 19900 });
+  });
+
+  it("skips video games", () => {
+    expect(parseDealNewsItem(find("Ocarina of Time"))).toBeNull();
   });
 
   it("skips store-wide sales, which have no single price", () => {

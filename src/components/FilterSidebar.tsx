@@ -38,13 +38,13 @@ export function FilterSidebar({ filters, facets }: { filters: Filters; facets: F
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="mb-3 w-full rounded-md border border-zinc-700 px-3 py-2 text-left font-medium lg:hidden"
+        className="glass mb-3 w-full rounded-xl px-4 py-2.5 text-left font-semibold lg:hidden"
       >
         Filters{active ? ` (${active})` : ""} <span className="float-right">{open ? "▲" : "▼"}</span>
       </button>
 
       {/* The key makes the boxes redraw when filters change from outside (for example "Clear"). */}
-      <div key={JSON.stringify(filters)} className={`${open ? "block" : "hidden"} space-y-5 lg:block`}>
+      <div key={JSON.stringify(filters)} className={`${open ? "block" : "hidden"} glass space-y-5 rounded-2xl p-4 lg:block`}>
         <Section title="Category">
           <Radio name="cat" value="" checked={!filters.category} label="All" />
           {CATEGORIES.map((c) => (
@@ -57,7 +57,7 @@ export function FilterSidebar({ filters, facets }: { filters: Filters; facets: F
                 count={facets.categories[c.id] ?? 0}
               />
               {c.id === "technology" && filters.category === "technology" && (
-                <div className="ml-5 mt-1 space-y-1 border-l border-zinc-800 pl-3">
+                <div className="ml-5 mt-1 space-y-1 border-l border-white/10 pl-3">
                   <Radio name="sub" value="" checked={!filters.subcategory} label="All tech" />
                   {TECH_SUBCATEGORIES.map((s) => (
                     <Radio
@@ -131,7 +131,7 @@ export function FilterSidebar({ filters, facets }: { filters: Filters; facets: F
             name="off"
             defaultValue={filters.minOff ?? ""}
             aria-label="Minimum percent off"
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5"
+            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 outline-none focus:border-emerald-400/60"
           >
             <option value="">Any</option>
             {OFF_CHOICES.map((n) => (
@@ -146,13 +146,13 @@ export function FilterSidebar({ filters, facets }: { filters: Filters; facets: F
           <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
             {facets.stores.length === 0 && <p className="text-zinc-500">No stores yet.</p>}
             {facets.stores.map((s) => (
-              <label key={s.name} className="flex cursor-pointer items-center gap-2 hover:text-white">
+              <label key={s.name} className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-0.5 transition hover:bg-white/5 hover:text-white">
                 <input
                   type="checkbox"
                   name="store"
                   value={s.name}
                   defaultChecked={filters.stores.includes(s.name)}
-                  className="accent-emerald-500"
+                  className="accent-emerald-400"
                 />
                 <span className="flex-1 truncate">{s.name}</span>
                 <span className="text-xs text-zinc-500">{s.count}</span>
@@ -162,12 +162,12 @@ export function FilterSidebar({ filters, facets }: { filters: Filters; facets: F
         </Section>
 
         <div className="flex gap-2">
-          <button className="flex-1 rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-500">
+          <button className="flex-1 rounded-lg bg-emerald-400 px-3 py-1.5 font-bold text-emerald-950 transition hover:brightness-110 active:scale-95">
             Apply
           </button>
           <Link
             href={filters.view === "cards" ? "/?view=cards" : "/"}
-            className="rounded-md border border-zinc-700 px-3 py-1.5 text-zinc-300 hover:bg-zinc-800"
+            className="rounded-lg border border-white/10 px-3 py-1.5 text-zinc-300 transition hover:bg-white/10"
           >
             Clear
           </Link>
@@ -180,7 +180,7 @@ export function FilterSidebar({ filters, facets }: { filters: Filters; facets: F
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset>
-      <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">{title}</legend>
+      <legend className="mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-400">{title}</legend>
       <div className="space-y-1">{children}</div>
     </fieldset>
   );
@@ -188,13 +188,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Radio(props: { name: string; value: string; checked: boolean; label: string; count?: number }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 hover:text-white">
+    <label className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-0.5 transition hover:bg-white/5 hover:text-white">
       <input
         type="radio"
         name={props.name}
         value={props.value}
         defaultChecked={props.checked}
-        className="accent-emerald-500"
+        className="accent-emerald-400"
       />
       <span className="flex-1">{props.label}</span>
       {props.count !== undefined && <span className="text-xs text-zinc-500">{props.count}</span>}
@@ -215,7 +215,7 @@ function Pick(props: {
       <select
         name={props.name}
         defaultValue={props.value ?? ""}
-        className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1"
+        className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 outline-none focus:border-emerald-400/60"
       >
         <option value="">Any</option>
         {props.options.map(([value, text]) => (
@@ -230,7 +230,7 @@ function Pick(props: {
 
 function PriceBox(props: { name: string; placeholder: string; defaultValue: string }) {
   return (
-    <label className="flex flex-1 items-center rounded-md border border-zinc-700 bg-zinc-900 px-2">
+    <label className="flex flex-1 items-center rounded-lg border border-white/10 bg-white/[0.04] px-2 focus-within:border-emerald-400/60">
       <span className="text-zinc-500">$</span>
       <input
         name={props.name}

@@ -89,3 +89,35 @@ export async function getFacets(db: Db): Promise<Facets> {
   }
   return { stores, categories, subcategories, lastCheckedAt: latest?.at ? new Date(latest.at) : null };
 }
+
+export type Stats = { live: number; stores: number; bestOff: number; newToday: number };
+
+/** The headline numbers at the top of the home page. Ended deals are not counted. */
+export async function getStats(db: Db, now: Date = new Date()): Promise<Stats> {
+  const dayAgo = new Date(now.getTime() - 24 * 3600 * 1000);
+  const [row] = await db
+    .select({
+      live: count(),
+      stores: sql<number>`count(distinct ${deals.store})`,
+      bestOff: sql<number>`coalesce(max(${pctOff}), 0)`,
+      newToday: sql<number>`count(*) filter (where ${deals.firstSeenAt} > ${dayAgo})`,
+    })
+    .from(deals)
+    .where(or(isNull(deals.expiresAt), gt(deals.expiresAt, now)));
+  return {
+    live: Number(row.live),
+    stores: Number(row.stores),
+    bestOff: Number(row.bestOff),
+    newToday: Number(row.newToday),
+  };
+}
+
+/** The biggest real markdowns right now, for the "Top drops" row. */
+export async function getTopDrops(db: Db, limit: number, now: Date = new Date()): Promise<DealRow[]> {
+  return db
+    .select()
+    .from(deals)
+    .where(and(or(isNull(deals.expiresAt), gt(deals.expiresAt, now)), sql`${pctOff} > 0`))
+    .orderBy(desc(pctOff), desc(savedCents), asc(deals.id))
+    .limit(limit);
+}

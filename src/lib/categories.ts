@@ -14,7 +14,7 @@ export const CATEGORIES: { id: Category; label: string }[] = [
 export const TECH_SUBCATEGORIES: { id: string; label: string }[] = [
   { id: "monitors", label: "Monitors" },
   { id: "gaming-gear", label: "Gaming gear" },
-  { id: "consoles-games", label: "Consoles & games" },
+  { id: "consoles", label: "Consoles & handhelds" },
   { id: "pc-parts", label: "PC parts" },
   { id: "computers", label: "Laptops, desktops, tablets" },
   { id: "tv-video", label: "TVs, soundbars, streaming" },

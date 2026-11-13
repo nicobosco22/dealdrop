@@ -4,7 +4,7 @@ import { parseFilters, type RawParams } from "@/lib/deal-filters";
 import { extractSpecs } from "@/lib/specs";
 import type { SourceDeal } from "@/sources/types";
 import { openDb, type Db } from "./client";
-import { getFacets, listDeals } from "./queries";
+import { getFacets, getStats, getTopDrops, listDeals } from "./queries";
 
 function deal(id: string, over: Partial<SourceDeal>): SourceDeal {
   return {
@@ -15,7 +15,7 @@ function deal(id: string, over: Partial<SourceDeal>): SourceDeal {
     specs: extractSpecs(over.subcategory ?? null, id),
     store: "Steam",
     category: "technology",
-    subcategory: "consoles-games",
+    subcategory: "consoles",
     priceCents: 1000,
     listPriceCents: 2000,
     url: `https://example.com/${id}`,
@@ -148,7 +148,31 @@ describe("getFacets", () => {
     const facets = await getFacets(db);
     expect(facets.stores[0]).toEqual({ name: "Newegg", count: 6 });
     expect(facets.categories).toEqual({ technology: 10, lego: 1, house: 1 });
-    expect(facets.subcategories).toEqual({ "consoles-games": 3, monitors: 3, "gaming-gear": 2, "pc-parts": 2 });
+    expect(facets.subcategories).toEqual({ "consoles": 3, monitors: 3, "gaming-gear": 2, "pc-parts": 2 });
     expect(facets.lastCheckedAt).toEqual(new Date("2026-11-12T10:00:00Z"));
+  });
+});
+
+describe("getStats and getTopDrops", () => {
+  const now = new Date("2026-11-12T12:00:00Z");
+
+  it("counts live deals, stores, the best discount and new deals", async () => {
+    const stats = await getStats(db, now);
+    expect(stats).toEqual({ live: 12, stores: 5, bestOff: 75, newToday: 12 });
+  });
+
+  it("stops counting a deal after it ends, and 'new' after a day", async () => {
+    const later = await getStats(db, new Date("2026-11-25T12:00:00Z"));
+    expect(later.live).toBe(11);
+    expect(later.newToday).toBe(0);
+  });
+
+  it("lists the biggest real markdowns first and leaves out deals with none", async () => {
+    const drops = await getTopDrops(db, 3, now);
+    expect(drops[0].title).toBe("Alpha Game"); // 75% off
+    expect(drops).toHaveLength(3);
+    const all = await getTopDrops(db, 50, now);
+    expect(all.map((d) => d.title)).not.toContain("LEGO Star Wars X-Wing"); // no "was" price
+    expect(all.map((d) => d.title)).not.toContain("100% Cotton_Towels"); // was = now
   });
 });

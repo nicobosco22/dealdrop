@@ -24,10 +24,12 @@ describe("technology subcategories", () => {
     ["Blue Yeti USB Microphone", "technology > gaming-gear"],
     ["Logitech C920x HD Pro Webcam", "technology > gaming-gear"],
     ["Secretlab Titan Evo Gaming Chair", "technology > gaming-gear"],
-    ["PlayStation 5 Slim Console - Disc Edition", "technology > consoles-games"],
-    ["Nintendo Switch 2 + Mario Kart World Bundle", "technology > consoles-games"],
-    ["ASUS ROG Ally X Handheld Gaming PC", "technology > consoles-games"],
-    ["The Legend of Zelda: Tears of the Kingdom - Nintendo Switch", "technology > consoles-games"],
+    ["PlayStation 5 Slim Console - Disc Edition", "technology > consoles"],
+    ["Nintendo Switch 2 + Mario Kart World Bundle", "technology > consoles"],
+    ["ASUS ROG Ally X Handheld Gaming PC", "technology > consoles"],
+    ["Xbox Series X 1TB Console", "technology > consoles"],
+    ["Valve Steam Deck OLED 512GB", "technology > consoles"],
+    ["Meta Quest 3 512GB VR Headset", "technology > gaming-gear"],
     ["MSI GeForce RTX 5070 Ti 16GB Graphics Card", "technology > pc-parts"],
     ["AMD Ryzen 7 9800X3D 8-Core Processor", "technology > pc-parts"],
     ["Corsair Vengeance 32GB (2x16GB) DDR5 6000MHz", "technology > pc-parts"],
@@ -139,8 +141,8 @@ describe("LEGO is the only toy", () => {
     expect(place("LEGO Ninjago Kids Backpack")).toBe("skip");
   });
 
-  it("puts LEGO video games with games", () => {
-    expect(place("LEGO Star Wars: The Skywalker Saga - PS5")).toBe("technology > consoles-games");
+  it("skips LEGO video games", () => {
+    expect(place("LEGO Star Wars: The Skywalker Saga - PS5")).toBe("skip");
   });
 
   it("skips every other toy", () => {
@@ -148,6 +150,33 @@ describe("LEGO is the only toy", () => {
     expect(place("Barbie Dreamhouse")).toBe("skip");
     expect(place("Mega Bloks Big Building Bag 80 Pieces")).toBe("skip");
     expect(place("Monopoly Board Game")).toBe("skip");
+  });
+});
+
+describe("video games are skipped, consoles are kept", () => {
+  it.each([
+    ["The Legend of Zelda: Tears of the Kingdom - Nintendo Switch"],
+    ["The Legend of Zelda: Ocarina of Time for Nintendo Switch 2"],
+    ["Elden Ring (PS5)"],
+    ["EA Sports FC 26 - Xbox Series X"],
+    ["Mario Kart World, Nintendo Switch 2"],
+    ["Hogwarts Legacy PS5 Digital Code"],
+    ["Cyberpunk 2077 [PC Download]"],
+    ["Xbox Game Pass Ultimate 3 Month Membership"],
+    ["Fortnite 2,800 V-Bucks Card for Xbox"],
+  ])("%s -> skip", (title) => {
+    expect(place(title)).toBe("skip");
+  });
+
+  it("still keeps the consoles themselves, even in a bundle with a game", () => {
+    expect(place("PlayStation 5 Slim Console - Disc Edition")).toBe("technology > consoles");
+    expect(place("Nintendo Switch 2 + Mario Kart World Bundle")).toBe("technology > consoles");
+    expect(place("Xbox Series S 512GB - Robot White")).toBe("technology > consoles");
+  });
+
+  it("still keeps gear made for a console", () => {
+    expect(place("Sony DualSense Wireless Controller for PS5")).toBe("technology > gaming-gear");
+    expect(place("HyperX Cloud III Gaming Headset for PC, PS5")).toBe("technology > gaming-gear");
   });
 });
 

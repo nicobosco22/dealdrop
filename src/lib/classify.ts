@@ -75,9 +75,9 @@ const RULES: Rule[] = [
   },
   {
     category: "technology",
-    subcategory: "consoles-games",
+    subcategory: "consoles",
     match:
-      /\b(playstation ?[45]?|ps[45]( pro| slim)?|xbox( series [xs]| one)?|nintendo switch( 2| lite| oled)?|switch 2|steam deck|rog ally|legion go|msi claw|meta quest|handheld (gaming )?(pc|console)s?|video games?|game consoles?)\b/,
+      /\b(playstation ?[45]?|ps[45]( pro| slim)?|xbox( series [xs]| one)?|nintendo switch( 2| lite| oled)?|switch 2|steam deck|rog ally|legion go|msi claw|meta quest|handheld (gaming )?(pc|console)s?|game consoles?)\b/,
     unless: ACCESSORY,
   },
   {
@@ -154,6 +154,14 @@ const LEGO_KNOCKOFF =
 const LEGO_NOT_A_SET =
   /\b(light(ing)? kits?|led (light|lighting)|display (case|stand|box)|acrylic|base ?plates? (compatible|for)|storage (bin|box|head|brick)|sorting|backpack|lunch ?box|keychain|key ?chain|book|magazine|costume|t-?shirt|hoodie|pajamas?|bedding|watch|pen|notebook|sticker|poster|mug|dvd|blu-?ray|movie)\b/;
 
+// Video games are not tracked, only the consoles that play them.
+// A game names its console as a label: "Zelda - Nintendo Switch", "Elden Ring (PS5)",
+// "Mario Kart for Nintendo Switch 2". A console names itself first: "PlayStation 5 Slim Console".
+const PLATFORM = "(the )?(playstation ?[45]?|ps[45]|xbox( series [xs]| one| 360)?|nintendo switch( 2)?|switch 2|wii u?|3ds|pc|steam|epic games)";
+const VIDEO_GAME = new RegExp(
+  `(\\bfor|\\bon|[-–—:(\\[/,])\\s*${PLATFORM}\\b|\\b(video games?|pc games?|game keys?|steam keys?|digital (code|download|edition)s?|dlc|season pass|v-?bucks|game pass|ps plus|playstation plus|nintendo switch online)\\b`,
+);
+
 const VIDEO_GAME_WORDS =
   /\b(ps[45]|playstation|xbox|nintendo switch|switch 2|pc download|steam key|steam|digital (code|download)|video game|epic games)\b/;
 
@@ -164,8 +172,8 @@ export function classifyProduct({ title, brand }: ProductInfo): Placement | null
   if (!text.trim()) return null;
 
   if (/\blego\b/.test(text)) {
-    // A LEGO video game is a game, not a toy.
-    if (VIDEO_GAME_WORDS.test(text)) return { category: "technology", subcategory: "consoles-games" };
+    // A LEGO video game is a game, not a building set, and games are not tracked.
+    if (VIDEO_GAME_WORDS.test(text)) return null;
     // If the store tells us the brand and it is not LEGO, it is not LEGO.
     if (brand && brand.trim().toLowerCase() !== "lego") return null;
     if (LEGO_KNOCKOFF.test(text) || LEGO_NOT_A_SET.test(text)) return null;
@@ -180,6 +188,8 @@ export function classifyProduct({ title, brand }: ProductInfo): Placement | null
 
   for (const rule of RULES) {
     if (rule.match.test(text) && !(rule.unless && rule.unless.test(text))) {
+      // Something filed under consoles that reads like a game title is a game: skip it.
+      if (rule.subcategory === "consoles" && VIDEO_GAME.test(text)) return null;
       return { category: rule.category, subcategory: rule.subcategory };
     }
   }

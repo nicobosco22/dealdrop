@@ -32,12 +32,13 @@ npm test
 
 - Never make up a price. If a price can't be read, the deal is skipped.
 - Every deal stores its link and the time it was last checked.
+- No video games. Consoles and gaming gear are tracked; the games themselves are skipped.
 - Keys live in `.env.local`, never in the code. See `.env.example`.
 
 ## Build progress
 
 - [x] Step 1: project, database, tests
-- [x] Step 2: first source working end to end (CheapShark game prices)
+- [x] Step 2: first source working end to end (CheapShark game prices; removed later, video games are not tracked)
 - [x] Step 3: main screen (filters, sortable table, card view)
 - [x] Step 4: categories, subcategories, spec filters
 - [ ] Step 5: more sources, duplicate merging (DealNews feed done; Best Buy and eBay wait for keys)

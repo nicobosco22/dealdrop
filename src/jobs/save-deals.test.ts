@@ -12,7 +12,7 @@ const sample: SourceDeal = {
   specs: null,
   store: "Steam",
   category: "technology",
-  subcategory: "consoles-games",
+  subcategory: "consoles",
   priceCents: 1000,
   listPriceCents: 2000,
   url: "https://example.com/deal/abc",

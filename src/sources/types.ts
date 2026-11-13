@@ -1,12 +1,12 @@
 // The one shape every data source must hand back.
-// Each source file (cheapshark.ts, bestbuy.ts, ...) turns its own format into this.
+// Each source file (dealnews.ts, bestbuy.ts, ...) turns its own format into this.
 
 import type { Specs } from "@/lib/specs";
 
 export type Category = "technology" | "house" | "furniture" | "lego";
 
 export type SourceDeal = {
-  /** Which source this came from, for example "cheapshark". */
+  /** Which source this came from, for example "dealnews". */
   source: string;
   /** The source's own id for this deal, so we can update it instead of adding a copy. */
   sourceId: string;
