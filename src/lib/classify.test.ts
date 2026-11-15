@@ -210,6 +210,32 @@ describe("video games are skipped, consoles are kept", () => {
   });
 });
 
+describe("fixes found on real store listings", () => {
+  it.each([
+    ["Dell Latitude E7440 E7420 E7450 CPU Cooling Fan", "skip"],
+    ["Gigabyte GTX 760 and 770 Graphics Card Cooling Fan 3-Pack", "skip"],
+    ["GTX 1060 ITX Graphics Card Cooler Radiator", "skip"],
+    ["PLD10010S12HH GPU Cooling Replacement Fan", "skip"],
+    ["OIAGLH 525W Power Supply for PowerEdge T3400/410", "skip"],
+    ["Cable Guys Fallout Vault Boy Controller and Phone Holder", "skip"],
+    ['Ehaho 17" UTV Sound Bar', "skip"],
+    ["Compressed Towel Tablets 50-Pack", "house"],
+    ['Anyking S15 Plus 15.6" 1080p IPS Portable Laptop Screen Extender', "technology > monitors"],
+    ["Sony PlayStation 5 Slim Digital Console w/ Extra DualSense Controller", "technology > consoles"],
+    ["PlayStation 5 Digital Edition Console", "technology > consoles"],
+    ["Xbox Series X 1TB Console Bundle with Extra Controller", "technology > consoles"],
+  ])("%s -> %s", (title, expected) => {
+    expect(place(title)).toBe(expected);
+  });
+
+  it("still keeps real PC parts that mention fans and coolers", () => {
+    expect(place("Corsair RS120-R ARGB 120mm PWM Reverse Case Fans 3-Pack")).toBe("technology > pc-parts");
+    expect(place("ARCTIC Liquid Freezer III Pro 360 AIO CPU Cooler")).toBe("technology > pc-parts");
+    expect(place("MSI GeForce RTX 5070 Ti 16GB Graphics Card")).toBe("technology > pc-parts");
+    expect(place("Rosewill VSB 750W 80+ Bronze Semi-Modular ATX 3.1 Power Supply")).toBe("technology > pc-parts");
+  });
+});
+
 describe("add-ons and unrelated things are skipped", () => {
   it.each([
     ["iPhone 16 Pro Case with MagSafe"],

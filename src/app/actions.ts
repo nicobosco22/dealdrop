@@ -5,8 +5,8 @@ import { eq, not } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
-import { deals, watches } from "@/db/schema";
-import { sendAlerts, sendTestAlert } from "@/jobs/notify";
+import { deals, settings, watches } from "@/db/schema";
+import { checkWebhook, sendAlerts, sendTestAlert, WEBHOOK_SETTING } from "@/jobs/notify";
 import { runFetch } from "@/jobs/run-fetch";
 import { parsePriceToCents } from "@/lib/money";
 
@@ -44,6 +44,28 @@ export async function removeWatch(watchId: number) {
 
 /** The "Send test alert" button on the Watchlist page. The result shows in a banner. */
 export async function testAlert() {
-  const result = await sendTestAlert();
+  const result = await sendTestAlert(await getDb());
   redirect(`/watchlist?test=${result}`);
+}
+
+/**
+ * Saves the Discord webhook address pasted into the Watchlist page.
+ * It is checked first, stored in the local database, and never shown back on screen.
+ */
+export async function saveWebhook(formData: FormData) {
+  const { status, url } = checkWebhook(String(formData.get("webhook") ?? ""));
+  if (!url) redirect(`/watchlist?test=${status}`);
+  const db = await getDb();
+  await db
+    .insert(settings)
+    .values({ key: WEBHOOK_SETTING, value: url })
+    .onConflictDoUpdate({ target: settings.key, set: { value: url } });
+  redirect("/watchlist?test=saved");
+}
+
+/** Turns Discord alerts off by forgetting the saved address. */
+export async function removeWebhook() {
+  const db = await getDb();
+  await db.delete(settings).where(eq(settings.key, WEBHOOK_SETTING));
+  redirect("/watchlist?test=removed");
 }

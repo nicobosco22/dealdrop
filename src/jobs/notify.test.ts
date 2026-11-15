@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { openDb } from "@/db/client";
 import { deals, watches } from "@/db/schema";
 import type { SourceDeal } from "@/sources/types";
-import { buildAlertMessage, findNewMatches, readWebhook, sendAlerts } from "./notify";
+import { settings } from "@/db/schema";
+import { buildAlertMessage, checkWebhook, findNewMatches, getWebhook, sendAlerts, WEBHOOK_SETTING } from "./notify";
 import { saveDeals } from "./save-deals";
 
 function deal(title: string, priceCents: number, over: Partial<SourceDeal> = {}): SourceDeal {
@@ -87,33 +88,56 @@ describe("watchlist alerts", () => {
   });
 });
 
-describe("readWebhook", () => {
-  const withUrl = (value: string | undefined) => {
+describe("checkWebhook", () => {
+  it("accepts real Discord webhook addresses", () => {
+    expect(checkWebhook("https://discord.com/api/webhooks/123456789012345678/abc-DEF_123").status).toBe("ready");
+    expect(checkWebhook("  https://discordapp.com/api/webhooks/123/abc  ").status).toBe("ready");
+  });
+
+  it("says when nothing is set", () => {
+    expect(checkWebhook(undefined).status).toBe("missing");
+    expect(checkWebhook("   ").status).toBe("missing");
+  });
+
+  it("refuses anything that is not a Discord webhook", () => {
+    expect(checkWebhook("https://example.com/api/webhooks/123/abc").status).toBe("not-discord");
+    expect(checkWebhook("https://discord.com.evil.example/api/webhooks/123/abc").status).toBe("not-discord");
+    expect(checkWebhook("http://discord.com/api/webhooks/123/abc").status).toBe("not-discord");
+    expect(checkWebhook("https://discord.com/channels/123/456").status).toBe("not-discord");
+  });
+});
+
+describe("getWebhook", () => {
+  // These tests must not depend on a real address in the environment.
+  const withoutEnv = async <T>(run: () => Promise<T>) => {
     const saved = process.env.DISCORD_WEBHOOK_URL;
-    if (value === undefined) delete process.env.DISCORD_WEBHOOK_URL;
-    else process.env.DISCORD_WEBHOOK_URL = value;
+    delete process.env.DISCORD_WEBHOOK_URL;
     try {
-      return readWebhook().status;
+      return await run();
+    } finally {
+      if (saved !== undefined) process.env.DISCORD_WEBHOOK_URL = saved;
+    }
+  };
+
+  it("uses the address saved from the Watchlist page", async () => {
+    const db = await openDb();
+    await withoutEnv(async () => {
+      expect((await getWebhook(db)).status).toBe("missing");
+      await db.insert(settings).values({ key: WEBHOOK_SETTING, value: "https://discord.com/api/webhooks/1/abc" });
+      expect(await getWebhook(db)).toEqual({ status: "ready", url: "https://discord.com/api/webhooks/1/abc" });
+    });
+  });
+
+  it("lets .env.local win over the saved one", async () => {
+    const db = await openDb();
+    await db.insert(settings).values({ key: WEBHOOK_SETTING, value: "https://discord.com/api/webhooks/1/saved" });
+    const saved = process.env.DISCORD_WEBHOOK_URL;
+    process.env.DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/2/fromenv";
+    try {
+      expect((await getWebhook(db)).url).toBe("https://discord.com/api/webhooks/2/fromenv");
     } finally {
       if (saved === undefined) delete process.env.DISCORD_WEBHOOK_URL;
       else process.env.DISCORD_WEBHOOK_URL = saved;
     }
-  };
-
-  it("accepts real Discord webhook addresses", () => {
-    expect(withUrl("https://discord.com/api/webhooks/123456789012345678/abc-DEF_123")).toBe("ready");
-    expect(withUrl("  https://discordapp.com/api/webhooks/123/abc  ")).toBe("ready");
-  });
-
-  it("says when nothing is set", () => {
-    expect(withUrl(undefined)).toBe("missing");
-    expect(withUrl("   ")).toBe("missing");
-  });
-
-  it("refuses anything that is not a Discord webhook", () => {
-    expect(withUrl("https://example.com/api/webhooks/123/abc")).toBe("not-discord");
-    expect(withUrl("https://discord.com.evil.example/api/webhooks/123/abc")).toBe("not-discord");
-    expect(withUrl("http://discord.com/api/webhooks/123/abc")).toBe("not-discord");
-    expect(withUrl("https://discord.com/channels/123/456")).toBe("not-discord");
   });
 });

@@ -41,8 +41,20 @@ const APPLIANCE_ADDON = /\b(liners?|filters?|replacement|bags?|covers?|parts?|de
 
 // Add-ons that would otherwise sneak into a category through another word
 // ("Monitor Arm Desk Mount" has the word desk in it). Checked before any rule.
-const ALWAYS_SKIP =
-  /\bmonitor (arm|stand|mount|riser)s?\b|\b(desk|wall|ceiling) (mount|clamp)s?\b|\b(charging|charger) (station|dock|stand|cradle)s?\b/;
+const ALWAYS_SKIP = new RegExp(
+  [
+    String.raw`\bmonitor (arm|stand|mount|riser)s?\b`,
+    String.raw`\b(desk|wall|ceiling) (mount|clamp)s?\b`,
+    String.raw`\b(charging|charger) (station|dock|stand|cradle)s?\b`,
+    // Spare parts: a replacement fan for a graphics card is not a graphics card.
+    String.raw`\b(graphics card|video card|gpu|[gr]tx ?\d{3,4}|rx ?\d{4})\b.*\b(cooling|cooler|fans?|radiator|brackets?|backplates?|risers?|heatsinks?)\b`,
+    String.raw`\b(replacement|cooling) fans?\b`,
+    String.raw`\bpower supply for\b`,
+    // Gear made for vehicles.
+    String.raw`\b(utv|atv|golf cart|marine|boat|motorcycle|car stereo|car audio)\b`,
+    String.raw`\b(phone|controller|headset|tablet|cup) (and \w+ )?(holders?|hangers?)\b`,
+  ].join("|"),
+);
 
 const RULES: Rule[] = [
   // --- Things that look like one category but are another ---
@@ -71,7 +83,7 @@ const RULES: Rule[] = [
   {
     category: "technology",
     subcategory: "monitors",
-    match: /\bmonitors?\b/,
+    match: /\bmonitors?\b|\b(laptop )?screen extenders?\b|\bportable (displays?|screens?)\b/,
     unless:
       /\b(baby|blood pressure|heart rate|glucose|air quality|energy|oxygen|sleep|pet|video baby|studio) monitors?\b|\bmonitor (arm|stand|mount|riser|light ?bar|lamp|cable|hood|privacy)/,
   },
@@ -80,14 +92,14 @@ const RULES: Rule[] = [
     subcategory: "computers",
     match:
       /\b(laptops?|notebook pcs?|chromebooks?|macbooks?|ultrabooks?|desktop (pc|computer|tower)s?|gaming (pc|desktop)s?|mini pcs?|all[- ]in[- ]one (pc|computer|desktop)s?|imac|mac mini|mac studio|tablets?|ipads?|surface (pro|laptop|go)|galaxy tab)\b/,
-    unless: new RegExp(`${FOR_A_COMPUTER.source}|${ACCESSORY.source}|\\bgraphics tablet\\b|\\bhandheld\\b|\\btablets? \\(\\d+ count\\)`),
+    unless: new RegExp(`${FOR_A_COMPUTER.source}|${ACCESSORY.source}|\\bgraphics tablet\\b|\\bhandheld\\b|\\b(towel|dishwasher|cleaning|descaling|denture|toilet|pool|chlorine|vitamin|chewable|detergent|fizzing)\\b|\\btablets? \\(\\d+ count\\)`),
   },
   {
     category: "technology",
     subcategory: "gaming-gear",
     match:
       /\bgaming chairs?\b|\b(controllers?|gamepads?|joy-?cons?|dualsense|fight sticks?|racing wheels?)\b|\bheadsets?\b|\bkeyboards?\b|\bkeypads?\b|\bmouse ?pads?\b|\bdesk ?mats?\b|\b(mouse|mice)\b|\bwebcams?\b|\b(microphones?|mics?)\b|\bcapture cards?\b|\bstream deck\b|\bkey lights?\b|\bring lights?\b|\bboom arms?\b/,
-    unless: /\bkeyboard (tray|drawer|cover|stickers?)\b|\bmouse traps?\b|\bcontroller (charger|charging|skin|grip|case|stand)s?\b|\bpiano\b|\bcharge controllers?\b/,
+    unless: /\b(playstation ?[45]?|ps[45]|xbox( series [xs])?|nintendo switch( 2)?|switch 2)( \w+){0,3} (consoles?|bundles?)\b|\bkeyboard (tray|drawer|cover|stickers?)\b|\bmouse traps?\b|\bcontroller (charger|charging|skin|grip|case|stand)s?\b|\bpiano\b|\bcharge controllers?\b/,
   },
   {
     category: "technology",
@@ -175,7 +187,7 @@ const LEGO_NOT_A_SET =
 // "Mario Kart for Nintendo Switch 2". A console names itself first: "PlayStation 5 Slim Console".
 const PLATFORM = "(the )?(playstation ?[45]?|ps[45]|xbox( series [xs]| one| 360)?|nintendo switch( 2)?|switch 2|wii u?|3ds|pc|steam|epic games)";
 const VIDEO_GAME = new RegExp(
-  `(\\bfor|\\bon|[-–—:(\\[/,])\\s*${PLATFORM}\\b|\\b(video games?|pc games?|game keys?|steam keys?|digital (code|download|edition)s?|dlc|season pass|v-?bucks|game pass|ps plus|playstation plus|nintendo switch online)\\b`,
+  `(\\bfor|\\bon|[-–—:(\\[/,])\\s*${PLATFORM}\\b|\\b(video games?|pc games?|game keys?|steam keys?|digital (code|download)s?|dlc|season pass|v-?bucks|game pass|ps plus|playstation plus|nintendo switch online)\\b`,
 );
 
 const VIDEO_GAME_WORDS =

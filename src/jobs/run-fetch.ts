@@ -6,6 +6,7 @@ import type { Db } from "@/db/client";
 import { deals } from "@/db/schema";
 import { fetchDealNewsDeals } from "@/sources/dealnews";
 import type { SourceDeal } from "@/sources/types";
+import { resortDeals } from "./resort";
 import { saveDeals, type SaveResult } from "./save-deals";
 
 const SOURCES: Record<string, () => Promise<SourceDeal[]>> = {
@@ -29,6 +30,9 @@ async function fetchAllSources(db: Db): Promise<FetchReport> {
   const report: FetchReport = {};
   // Deals from a source we no longer use are removed, so nothing is left behind.
   await db.delete(deals).where(notInArray(deals.source, Object.keys(SOURCES)));
+  // Saved deals are re-checked against the current sorting rules.
+  const resorted = await resortDeals(db);
+  if (resorted.moved || resorted.removed) console.log("re-sorted saved deals", resorted);
   for (const [name, fetchDeals] of Object.entries(SOURCES)) {
     try {
       const found = await fetchDeals();

@@ -7,24 +7,31 @@ import { Logo } from "@/components/Logo";
 import { getDb } from "@/db/client";
 import { listWatches } from "@/db/queries";
 import { formatCents, percentOff } from "@/lib/money";
-import { readWebhook } from "@/jobs/notify";
-import { addWatch, removeWatch, testAlert } from "../actions";
+import { getWebhook } from "@/jobs/notify";
+import { addWatch, removeWatch, removeWebhook, saveWebhook, testAlert } from "../actions";
 
 export const metadata = { title: "Watchlist · DealDrop" };
 
 const TEST_RESULTS: Record<string, { text: string; good: boolean }> = {
+  saved: { text: "Address saved. Press “Send test alert” to check it works.", good: true },
+  removed: { text: "Address removed. Discord alerts are off.", good: true },
   sent: { text: "Test alert sent. Check your Discord channel.", good: true },
   failed: { text: "Discord did not accept the message. Check that the webhook still exists.", good: false },
-  missing: { text: "No webhook address is set yet, so nothing was sent.", good: false },
-  "not-discord": { text: "The address in .env.local is not a Discord webhook address, so nothing was sent.", good: false },
+  missing: { text: "No address was entered, so nothing was saved or sent.", good: false },
+  "not-discord": {
+    text: "That is not a Discord webhook address. It should start with https://discord.com/api/webhooks/",
+    good: false,
+  },
 };
 
-/** Shows whether alerts are switched on, and lets you send a test. Never shows the address itself. */
+/** Shows whether alerts are switched on, lets you paste the address, and send a test. Never shows the address. */
 async function AlertStatus({ searchParams }: { searchParams: PageProps<"/watchlist">["searchParams"] }) {
+  await connection();
   const test = (await searchParams).test;
   const result = typeof test === "string" ? TEST_RESULTS[test] : undefined;
-  const { status } = readWebhook();
+  const { status } = await getWebhook(await getDb());
   const on = status === "ready";
+  const fromFile = Boolean(process.env.DISCORD_WEBHOOK_URL?.trim());
 
   return (
     <section className="glass mt-5 rounded-2xl p-4 text-sm">
@@ -35,17 +42,53 @@ async function AlertStatus({ searchParams }: { searchParams: PageProps<"/watchli
           <span className="text-zinc-400">
             {on
               ? "New matches are posted to your channel after each fetch."
-              : status === "not-discord"
-                ? "The address in .env.local is not a Discord webhook address."
-                : "Paste a Discord webhook address into .env.local, then restart the app."}
+              : "Paste your Discord webhook address below to get a message when a new deal matches."}
           </span>
         </p>
-        <form action={testAlert}>
-          <button className="rounded-lg border border-white/10 px-3 py-1.5 font-medium text-zinc-200 transition hover:border-emerald-400/50 hover:text-white">
-            Send test alert
+        {on && (
+          <>
+            <form action={testAlert}>
+              <button className="rounded-lg border border-white/10 px-3 py-1.5 font-medium text-zinc-200 transition hover:border-emerald-400/50 hover:text-white">
+                Send test alert
+              </button>
+            </form>
+            {!fromFile && (
+              <form action={removeWebhook}>
+                <button className="rounded-lg border border-white/10 px-3 py-1.5 text-zinc-400 transition hover:border-rose-400/50 hover:text-rose-300">
+                  Turn off
+                </button>
+              </form>
+            )}
+          </>
+        )}
+      </div>
+
+      {!on && (
+        <form action={saveWebhook} className="mt-3 flex flex-wrap items-end gap-3">
+          <label className="min-w-0 flex-1 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            Discord webhook address
+            {/* A password box, so the address is hidden as you paste it. */}
+            <input
+              name="webhook"
+              type="password"
+              required
+              autoComplete="off"
+              placeholder="https://discord.com/api/webhooks/…"
+              className="mt-1 block w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-normal normal-case tracking-normal text-foreground outline-none focus:border-emerald-400/60"
+            />
+          </label>
+          <button className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-bold text-emerald-950 transition hover:brightness-110 active:scale-95">
+            Save address
           </button>
         </form>
-      </div>
+      )}
+      {!on && (
+        <p className="mt-2 text-xs text-zinc-500">
+          In Discord: hover a channel → gear icon → Integrations → Webhooks → New Webhook → Copy Webhook URL. The
+          address is kept on this computer and is never shown again.
+        </p>
+      )}
+
       {result && (
         <p className={`mt-3 rounded-lg px-3 py-2 ${result.good ? "bg-emerald-400/10 text-emerald-200" : "bg-rose-400/10 text-rose-200"}`}>
           {result.text}

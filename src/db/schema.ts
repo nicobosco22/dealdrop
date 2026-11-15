@@ -66,5 +66,11 @@ export const watches = pgTable("watches", {
   lastNotifiedAt: timestamp("last_notified_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Small app settings saved from inside DealDrop, one row per setting. */
+export const settings = pgTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
+
 export type DealRow = typeof deals.$inferSelect;
 export type WatchRow = typeof watches.$inferSelect;

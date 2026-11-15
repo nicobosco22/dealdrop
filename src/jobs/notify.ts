@@ -5,7 +5,7 @@
 import { and, eq, gt } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { watchWhere } from "@/db/queries";
-import { deals, watches, type DealRow, type WatchRow } from "@/db/schema";
+import { deals, settings, watches, type DealRow, type WatchRow } from "@/db/schema";
 import { formatCents, percentOff } from "@/lib/money";
 
 const MAX_DEALS_PER_ALERT = 5;
@@ -34,15 +34,27 @@ export async function findNewMatches(db: Db, watch: WatchRow, now: Date): Promis
 
 export type WebhookStatus = "ready" | "missing" | "not-discord";
 
+export const WEBHOOK_SETTING = "discord_webhook";
+
 /**
- * Looks at DISCORD_WEBHOOK_URL. Only real Discord webhook addresses are accepted,
+ * Checks a webhook address. Only real Discord webhook addresses are accepted,
  * so a typo can never make DealDrop post your watchlist to some other website.
  */
-export function readWebhook(): { status: WebhookStatus; url: string | null } {
-  const url = process.env.DISCORD_WEBHOOK_URL?.trim();
+export function checkWebhook(raw: string | null | undefined): { status: WebhookStatus; url: string | null } {
+  const url = raw?.trim();
   if (!url) return { status: "missing", url: null };
   const ok = /^https:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(url);
   return ok ? { status: "ready", url } : { status: "not-discord", url: null };
+}
+
+/**
+ * Finds the webhook address: DISCORD_WEBHOOK_URL in .env.local wins if set,
+ * otherwise the one saved from the Watchlist page.
+ */
+export async function getWebhook(db: Db): Promise<{ status: WebhookStatus; url: string | null }> {
+  if (process.env.DISCORD_WEBHOOK_URL?.trim()) return checkWebhook(process.env.DISCORD_WEBHOOK_URL);
+  const [row] = await db.select().from(settings).where(eq(settings.key, WEBHOOK_SETTING));
+  return checkWebhook(row?.value);
 }
 
 async function post(url: string, content: string): Promise<boolean> {
@@ -59,8 +71,8 @@ async function post(url: string, content: string): Promise<boolean> {
 }
 
 /** The "Send test alert" button. Says what happened without ever revealing the address. */
-export async function sendTestAlert(): Promise<"sent" | "failed" | WebhookStatus> {
-  const { status, url } = readWebhook();
+export async function sendTestAlert(db: Db): Promise<"sent" | "failed" | WebhookStatus> {
+  const { status, url } = await getWebhook(db);
   if (!url) return status;
   const ok = await post(url, "DealDrop test alert: your watchlist alerts are working.");
   return ok ? "sent" : "failed";
@@ -69,7 +81,7 @@ export async function sendTestAlert(): Promise<"sent" | "failed" | WebhookStatus
 export type AlertReport = { sent: number; skipped: "no webhook set" | null };
 
 export async function sendAlerts(db: Db, now: Date = new Date()): Promise<AlertReport> {
-  const { url: webhook } = readWebhook();
+  const { url: webhook } = await getWebhook(db);
   if (!webhook) return { sent: 0, skipped: "no webhook set" };
 
   let sent = 0;
