@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { toggleFavorite } from "@/app/actions";
+import { ScoreButton } from "@/components/ScoreCard";
 import type { DealRow } from "@/db/schema";
 import { subcategoryLabel } from "@/lib/categories";
 import { DEFAULT_DIR, hrefWith, type Filters, type RawParams, type Sort } from "@/lib/deal-filters";
@@ -77,48 +78,34 @@ function VerdictBadge({ deal }: { deal: DealRow }) {
   if (deal.verdict === "all-time-low") {
     return (
       <span
-        title="The source reports this is the lowest price on record."
+        title="The lowest price on record for this item."
         className="rounded-md border border-amber-300/40 bg-amber-300/15 px-1.5 py-0.5 text-[11px] font-bold text-amber-200"
       >
-        🏆 All-time low
+        🏆 Lowest price ever
       </span>
     );
   }
   if (deal.verdict === "below-average" && avg) {
     return (
       <span
-        title={`The source reports a 90-day average price of ${formatCents(avg)}.`}
+        title={`Over the last 90 days it has averaged ${formatCents(avg)}.`}
         className="rounded-md border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-200"
       >
-        Below 90-day avg ({formatCents(avg)})
+        Cheaper than usual ({formatCents(avg)})
       </span>
     );
   }
   if (deal.verdict === "inflated" && avg) {
     return (
       <span
-        title={`The markdown looks bigger than it is: the 90-day average price is ${formatCents(avg)}, about what it costs now.`}
+        title={`It has averaged ${formatCents(avg)} for 90 days, which is about what it costs now.`}
         className="rounded-md border border-rose-400/40 bg-rose-400/10 px-1.5 py-0.5 text-[11px] font-semibold text-rose-200"
       >
-        ⚠ Inflated markdown
+        ⚠ Not a real discount
       </span>
     );
   }
   return null;
-}
-
-/** The deal score as a small ring that fills up, with the number inside. */
-function ScoreRing({ score }: { score: number }) {
-  const color = score >= 70 ? "#fb7185" : score >= 45 ? "#34d399" : score >= 25 ? "#22d3ee" : "#52525b";
-  return (
-    <span
-      title={`Deal score ${score} out of 100: discount, dollars saved, price history and store trust.`}
-      className="inline-grid h-9 w-9 place-items-center rounded-full text-xs font-bold tabular-nums"
-      style={{ background: `conic-gradient(${color} ${score * 3.6}deg, rgb(255 255 255 / 0.08) 0deg)` }}
-    >
-      <span className="grid h-7 w-7 place-items-center rounded-full bg-[#0c0e12]">{score}</span>
-    </span>
-  );
 }
 
 /** The heart button. Click to save a deal; click again to un-save it. */
@@ -192,9 +179,8 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
           <col className="w-36" />
           <col className="w-28" />
           <col className="w-24" />
-          <col className="w-20" />
-          <col className="w-24" />
-          <col className="w-16" />
+          <col className="w-36" />
+          <col className="w-20 xl:w-36" />
           <col className="w-24" />
         </colgroup>
         <thead className="border-b border-white/10 text-[11px] uppercase tracking-wider text-zinc-400">
@@ -203,10 +189,9 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
             <SortHeader sort="store" label="Store" {...head} />
             <SortHeader sort="price" label="Price" align="right" {...head} />
             <th className="px-3 py-2.5 text-right font-semibold">Was</th>
-            <SortHeader sort="off" label="% off" align="right" {...head} />
-            <SortHeader sort="saved" label="Saved" align="right" {...head} />
-            <SortHeader sort="best" label="Score" align="right" {...head} />
-            <SortHeader sort="newest" label="Updated" {...head} />
+            <SortHeader sort="off" label="You save" align="right" {...head} />
+            <SortHeader sort="best" label="Deal score" align="right" {...head} />
+            <SortHeader sort="newest" label="Posted" {...head} />
           </tr>
         </thead>
         <tbody>
@@ -262,16 +247,16 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
                 <td className="px-3 py-2 text-right font-mono tabular-nums text-zinc-500 line-through decoration-zinc-600">
                   {off !== null && deal.listPriceCents !== null ? formatCents(deal.listPriceCents) : ""}
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td className="whitespace-nowrap px-3 py-2 text-right">
+                  {off !== null && deal.listPriceCents !== null && (
+                    <span className="mr-2 font-mono tabular-nums text-zinc-300">
+                      {formatCents(deal.listPriceCents - deal.priceCents)}
+                    </span>
+                  )}
                   <OffBadge off={off} />
                 </td>
-                <td className="px-3 py-2 text-right font-mono tabular-nums text-zinc-300">
-                  {off !== null && deal.listPriceCents !== null
-                    ? formatCents(deal.listPriceCents - deal.priceCents)
-                    : ""}
-                </td>
                 <td className="px-3 py-2 text-right">
-                  <ScoreRing score={deal.score} />
+                  <ScoreButton deal={deal} idPrefix="t" showWord />
                 </td>
                 <td
                   className="whitespace-nowrap px-3 py-2 text-xs text-zinc-500"
@@ -297,6 +282,10 @@ export function DealCards({ rows, now }: ViewProps) {
           <li key={deal.id} className="rise relative" style={{ "--i": index } as React.CSSProperties}>
             {/* The heart sits on top of the card, outside the link, so clicking it does not open the deal. */}
             <Heart deal={deal} className="absolute right-2 top-2 z-10 rounded-full bg-black/60 backdrop-blur" />
+            {/* Same for the score: it opens the "why this score" card instead of the deal. */}
+            <span className="absolute bottom-8 right-3 z-10">
+              <ScoreButton deal={deal} idPrefix="c" />
+            </span>
             <a
               href={deal.url}
               target="_blank"
@@ -322,7 +311,8 @@ export function DealCards({ rows, now }: ViewProps) {
                 <span>
                   <VerdictBadge deal={deal} />
                 </span>
-                <div className="mt-auto flex items-center gap-2 pt-2">
+                {/* The "was" price sits above the price, leaving room on the right for the score. */}
+                <div className="mt-auto flex flex-col-reverse items-start pr-12 pt-2">
                   <span className="font-mono text-xl font-bold tabular-nums text-emerald-300">
                     {formatCents(deal.priceCents)}
                   </span>
@@ -331,9 +321,7 @@ export function DealCards({ rows, now }: ViewProps) {
                       {formatCents(deal.listPriceCents)}
                     </span>
                   )}
-                  <span className="ml-auto">
-                    <ScoreRing score={deal.score} />
-                  </span>
+
                 </div>
                 <p className="flex flex-wrap items-center gap-x-2 text-[11px] text-zinc-600">
                   Checked {timeAgo(deal.lastCheckedAt, now)}
@@ -354,7 +342,7 @@ export function TopDrops({ rows, now }: { rows: DealRow[]; now: Date }) {
   return (
     <section aria-label="Top drops" className="mb-6">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-zinc-300">
-        <span aria-hidden>🔥</span> Top drops right now
+        <span aria-hidden>🔥</span> Biggest price cuts right now
       </h2>
       <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {rows.map((deal, index) => {
@@ -373,9 +361,9 @@ export function TopDrops({ rows, now }: { rows: DealRow[]; now: Date }) {
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0c0e12] via-[#0c0e12]/10 to-transparent" />
                 </div>
                 <div className="flex flex-1 flex-col gap-2 p-3 pt-1">
-                  <div className="flex items-end justify-between gap-2">
+                  <div className="flex flex-wrap items-end justify-between gap-x-2 gap-y-1">
                     <span
-                      className={`text-4xl font-black leading-none tracking-tight xl:text-5xl ${
+                      className={`text-3xl font-black leading-none tracking-tight sm:text-4xl xl:text-5xl ${
                         hot ? "text-gradient-hot" : "text-gradient"
                       }`}
                     >
@@ -387,7 +375,7 @@ export function TopDrops({ rows, now }: { rows: DealRow[]; now: Date }) {
                           {formatCents(deal.listPriceCents)}
                         </span>
                       )}
-                      <span className="font-mono text-xl font-bold tabular-nums text-emerald-300">
+                      <span className="font-mono text-base font-bold tabular-nums text-emerald-300 sm:text-xl">
                         {formatCents(deal.priceCents)}
                       </span>
                     </span>
@@ -397,7 +385,7 @@ export function TopDrops({ rows, now }: { rows: DealRow[]; now: Date }) {
                   </p>
                   <p className="mt-auto flex items-center justify-between text-xs text-zinc-400">
                     <StoreTag store={deal.store} />
-                    <span className="text-[11px] text-zinc-600">Checked {timeAgo(deal.lastCheckedAt, now)}</span>
+                    <span className="hidden text-[11px] text-zinc-600 sm:inline">Checked {timeAgo(deal.lastCheckedAt, now)}</span>
                   </p>
                 </div>
               </a>

@@ -20,7 +20,7 @@ export function SearchBox({ defaultValue }: { defaultValue: string }) {
   }, []);
 
   return (
-    <label className="group relative order-last w-full min-w-0 flex-1 sm:order-none sm:w-auto">
+    <label className="group relative order-last min-w-0 flex-1 basis-full sm:order-none sm:basis-0">
       <svg
         viewBox="0 0 24 24"
         aria-hidden

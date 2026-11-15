@@ -16,22 +16,19 @@ import {
   activeFilterCount,
   hrefWith,
   parseFilters,
-  SORTS,
   type RawParams,
   type Sort,
 } from "@/lib/deal-filters";
 import { timeAgo } from "@/lib/time";
 import { fetchNow } from "./actions";
 
-const SORT_LABELS: Record<Sort, string> = {
-  best: "Best deal",
-  newest: "Newest",
-  price: "Price",
-  off: "% off",
-  saved: "$ saved",
-  title: "Name",
-  store: "Store",
-};
+// The sort buttons above the list. (Name and store can still be sorted by clicking the column headings.)
+const SORT_BUTTONS: { sort: Sort; label: string }[] = [
+  { sort: "best", label: "Best deal" },
+  { sort: "newest", label: "Newest" },
+  { sort: "price", label: "Lowest price" },
+  { sort: "off", label: "Biggest discount" },
+];
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
@@ -47,32 +44,6 @@ function LoadingScreen() {
       <span className="live-dot" />
       Loading deals…
     </div>
-  );
-}
-
-function StatTile(props: { label: string; value: string; href?: string; tone?: "accent" | "hot" }) {
-  const number = (
-    <span
-      className={`text-2xl font-black tabular-nums sm:text-3xl ${
-        props.tone === "hot" ? "text-gradient-hot" : props.tone === "accent" ? "text-gradient" : ""
-      }`}
-    >
-      {props.value}
-    </span>
-  );
-  const body = (
-    <>
-      {number}
-      <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">{props.label}</span>
-    </>
-  );
-  const shape = "glass flex flex-col gap-0.5 rounded-2xl px-4 py-3";
-  return props.href ? (
-    <Link href={props.href} className={`${shape} transition hover:border-white/20 hover:bg-white/[0.06]`}>
-      {body}
-    </Link>
-  ) : (
-    <div className={shape}>{body}</div>
   );
 }
 
@@ -102,6 +73,9 @@ async function DealsBrowser({ searchParams }: { searchParams: Promise<RawParams>
           <span className="live-dot" />
           {facets.lastCheckedAt ? `Checked ${timeAgo(facets.lastCheckedAt, now)}` : "Not checked yet"}
         </span>
+        <Link href="/how-it-works" className="hidden text-sm text-zinc-400 transition hover:text-white lg:block">
+          How it works
+        </Link>
         <Link
           href="/watchlist"
           className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-zinc-200 transition hover:border-white/25 hover:text-white"
@@ -115,16 +89,34 @@ async function DealsBrowser({ searchParams }: { searchParams: Promise<RawParams>
 
       {isHome && (
         <>
-          <section aria-label="Right now" className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatTile label="Live deals" value={stats.live.toLocaleString("en-US")} tone="accent" />
-            <StatTile label="Stores tracked" value={String(stats.stores)} />
-            <StatTile
-              label="Biggest drop"
-              value={stats.bestOff > 0 ? `-${stats.bestOff}%` : "—"}
-              tone="hot"
-              href="/?sort=off"
-            />
-            <StatTile label="New in 24 hours" value={stats.newToday.toLocaleString("en-US")} />
+          <section aria-label="Right now" className="mb-6">
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
+              The best deals right now, <span className="text-gradient">ranked</span>.
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm text-zinc-400">
+              Every deal gets a score from 0 to 100. It looks at the discount, the money you save, the price
+              history and the store. Higher is better.{" "}
+              <Link href="/how-it-works" className="font-medium text-emerald-400 hover:underline">
+                How it works
+              </Link>
+            </p>
+            <p className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-300">
+              <span>
+                <b className="text-gradient text-base font-black tabular-nums">{stats.live.toLocaleString("en-US")}</b> deals
+              </span>
+              <span>
+                <b className="text-base font-black tabular-nums">{stats.stores}</b> stores
+              </span>
+              {stats.bestOff > 0 && (
+                <span>
+                  biggest price cut{" "}
+                  <b className="text-gradient-hot text-base font-black tabular-nums">-{stats.bestOff}%</b>
+                </span>
+              )}
+              <span>
+                <b className="text-base font-black tabular-nums">{stats.newToday.toLocaleString("en-US")}</b> new today
+              </span>
+            </p>
           </section>
           <TopDrops rows={topDrops} now={now} />
         </>
@@ -180,7 +172,7 @@ async function DealsBrowser({ searchParams }: { searchParams: Promise<RawParams>
 
             <nav aria-label="Sort" className="flex flex-wrap items-center gap-1">
               <span className="mr-1 text-xs text-zinc-500">Sort</span>
-              {SORTS.map((sort) => (
+              {SORT_BUTTONS.map(({ sort, label }) => (
                 <Link
                   key={sort}
                   href={hrefWith(raw, { sort, dir: null })}
@@ -188,7 +180,7 @@ async function DealsBrowser({ searchParams }: { searchParams: Promise<RawParams>
                     filters.sort === sort ? "bg-white/10 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-white"
                   }`}
                 >
-                  {SORT_LABELS[sort]}
+                  {label}
                 </Link>
               ))}
             </nav>

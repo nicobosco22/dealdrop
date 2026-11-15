@@ -59,7 +59,10 @@ export function FilterSidebar({ filters, facets }: { filters: Filters; facets: F
               {c.id === "technology" && filters.category === "technology" && (
                 <div className="ml-5 mt-1 space-y-1 border-l border-white/10 pl-3">
                   <Radio name="sub" value="" checked={!filters.subcategory} label="All tech" />
-                  {TECH_SUBCATEGORIES.map((s) => (
+                  {/* Sections with no deals right now are hidden, to keep the list short. */}
+                  {TECH_SUBCATEGORIES.filter(
+                    (s) => (facets.subcategories[s.id] ?? 0) > 0 || filters.subcategory === s.id,
+                  ).map((s) => (
                     <Radio
                       key={s.id}
                       name="sub"
@@ -126,7 +129,7 @@ export function FilterSidebar({ filters, facets }: { filters: Filters; facets: F
           </div>
         </Section>
 
-        <Section title="Discount">
+        <Section title="Discount at least">
           <select
             name="off"
             defaultValue={filters.minOff ?? ""}

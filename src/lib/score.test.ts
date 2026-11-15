@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scoreDeal, storePoints, type ScoreInput } from "./score";
+import { explainScore, scoreDeal, scoreWord, storePoints, type ScoreInput } from "./score";
 
 const base: ScoreInput = { priceCents: 10000, listPriceCents: null, store: "Amazon", insights: null };
 
@@ -89,5 +89,58 @@ describe("scoreDeal", () => {
       insights: { atAllTimeLow: true, avg90Cents: 50000 },
     });
     expect(best.score).toBe(100);
+  });
+});
+
+describe("scoreWord", () => {
+  it("turns a score into a plain word", () => {
+    expect(scoreWord(85, true)).toBe("Great deal");
+    expect(scoreWord(55, true)).toBe("Good deal");
+    expect(scoreWord(35, true)).toBe("Fair deal");
+    expect(scoreWord(20, true)).toBe("Small saving");
+  });
+
+  it("does not judge a deal it knows nothing about", () => {
+    expect(scoreWord(15, false)).toBe("No price info");
+  });
+});
+
+describe("explainScore", () => {
+  it("explains each part in a sentence, and the points add up to the score", () => {
+    const result = explainScore({
+      priceCents: 10000,
+      listPriceCents: 20000,
+      store: "Amazon",
+      insights: { atAllTimeLow: true, avg90Cents: 12500 },
+    });
+    expect(result.word).toBe("Great deal");
+    expect(result.lines.map((l) => l.text)).toEqual([
+      "50% below the usual price of $200.00.",
+      "You keep $100.00.",
+      "This is the lowest price on record. It has averaged $125.00 over the last 90 days, so this is 20% below its usual price.",
+      "Amazon is a big, well-known store.",
+    ]);
+    expect(result.lines.reduce((sum, l) => sum + l.points, 0)).toBe(result.score);
+    expect(result.warning).toBeNull();
+  });
+
+  it("says so when there is nothing to go on", () => {
+    const result = explainScore({ ...base, store: "Tiny Shop" });
+    expect(result.word).toBe("No price info");
+    expect(result.lines.map((l) => l.text)).toEqual([
+      "No usual price to compare with.",
+      "Unknown without a usual price.",
+      "No price history has been reported for this item yet.",
+      "Tiny Shop is a smaller store we know less about.",
+    ]);
+  });
+
+  it("warns about a fake discount and explains a marketplace", () => {
+    const result = explainScore({ ...base, listPriceCents: 20000, store: "eBay", insights: { avg90Cents: 10000 } });
+    expect(result.warning).toContain("looks bigger than it is");
+    expect(result.lines[2].text).toBe(
+      "It has averaged $100.00 over the last 90 days, so this is the same as its usual price.",
+    );
+    expect(result.lines[3].text).toContain("marketplace");
   });
 });

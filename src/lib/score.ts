@@ -86,3 +86,76 @@ export function scoreDeal(deal: ScoreInput): DealScore {
   };
   return { score: clamp(parts.discount + parts.saved + parts.history + parts.store, 0, 100), parts, verdict };
 }
+
+/** One short word for a score, for people who would rather not read numbers. */
+export function scoreWord(score: number, hasPriceFacts: boolean): string {
+  // With no "was" price and no price history, the score only reflects the store,
+  // so we say so instead of judging the deal.
+  if (!hasPriceFacts) return "No price info";
+  if (score >= 70) return "Great deal";
+  if (score >= 50) return "Good deal";
+  if (score >= 30) return "Fair deal";
+  return "Small saving";
+}
+
+export type ScoreLine = { label: string; points: number; max: number; text: string };
+export type ScoreExplanation = { score: number; word: string; lines: ScoreLine[]; warning: string | null };
+
+const dollars = (cents: number) => (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+
+/** Explains a score in plain sentences, one line per part. */
+export function explainScore(deal: ScoreInput): ScoreExplanation {
+  const { score, parts, verdict } = scoreDeal(deal);
+  const off = percentOff(deal.priceCents, deal.listPriceCents);
+  const insights = deal.insights ?? {};
+  const hasPriceFacts = off !== null || Boolean(insights.atAllTimeLow || insights.avg90Cents);
+
+  let history = "No price history has been reported for this item yet.";
+  if (insights.avg90Cents) {
+    const gap = Math.round((Math.abs(insights.avg90Cents - deal.priceCents) / insights.avg90Cents) * 100);
+    const side = deal.priceCents < insights.avg90Cents ? "below" : deal.priceCents > insights.avg90Cents ? "above" : "the same as";
+    const usual = `It has averaged ${dollars(insights.avg90Cents)} over the last 90 days, so this is ${gap ? `${gap}% ` : ""}${side} its usual price.`;
+    history = insights.atAllTimeLow ? `This is the lowest price on record. ${usual}` : usual;
+  } else if (insights.atAllTimeLow) {
+    history = "This is the lowest price on record.";
+  }
+
+  const storePoints = parts.store;
+  const store =
+    storePoints >= 15
+      ? `${deal.store} is a big, well-known store.`
+      : storePoints <= 5
+        ? `${deal.store} is a marketplace, so the seller and the item's condition can vary.`
+        : `${deal.store} is a smaller store we know less about.`;
+
+  return {
+    score,
+    word: scoreWord(score, hasPriceFacts),
+    lines: [
+      {
+        label: "Discount",
+        points: parts.discount,
+        max: 35,
+        text:
+          off !== null && deal.listPriceCents
+            ? `${off}% below the usual price of ${dollars(deal.listPriceCents)}.`
+            : "No usual price to compare with.",
+      },
+      {
+        label: "Money saved",
+        points: parts.saved,
+        max: 15,
+        text:
+          off !== null && deal.listPriceCents
+            ? `You keep ${dollars(deal.listPriceCents - deal.priceCents)}.`
+            : "Unknown without a usual price.",
+      },
+      { label: "Price history", points: parts.history, max: 35, text: history },
+      { label: "Store", points: storePoints, max: 15, text: store },
+    ],
+    warning:
+      verdict === "inflated"
+        ? "The discount looks bigger than it is. The item has cost about this much for 90 days, so most of the discount points were taken away."
+        : null,
+  };
+}

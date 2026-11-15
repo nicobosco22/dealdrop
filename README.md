@@ -24,7 +24,8 @@ npm test
 | `src/jobs/` | `run-fetch.ts` runs every source; `save-deals.ts` saves deals and price history. |
 | `src/db/` | The database tables (`schema.ts`) and how we open the database (`client.ts`). |
 | `src/lib/` | Small helpers: reading prices (`money.ts`), sorting products into categories (`classify.ts`), reading specs (`specs.ts`). |
-| `src/app/` | The web pages. |
+| `src/app/` | The web pages: the deal list, `/watchlist` and `/how-it-works`. |
+| `src/components/` | The pieces the pages are built from (table, cards, filters, score card). |
 | `drizzle/` | The SQL that creates the tables. Made by `npm run db:generate`; don't edit by hand. |
 | `.data/` | Your local database. Not saved to GitHub. Delete it to start fresh. |
 
