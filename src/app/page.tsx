@@ -19,8 +19,10 @@ import {
   type RawParams,
   type Sort,
 } from "@/lib/deal-filters";
+import { isOwner } from "@/lib/owner";
+import { ownerMode } from "@/lib/owner-token";
 import { timeAgo } from "@/lib/time";
-import { fetchNow } from "./actions";
+import { fetchNow, signOut } from "./actions";
 
 // The sort buttons above the list. (Name and store can still be sorted by clicking the column headings.)
 const SORT_BUTTONS: { sort: Sort; label: string }[] = [
@@ -50,8 +52,10 @@ function LoadingScreen() {
 async function DealsBrowser({ searchParams }: { searchParams: Promise<RawParams> }) {
   // Deals change all the time, so always read them fresh when the page is opened.
   await connection();
+  const owner = await isOwner();
   const raw = await searchParams;
-  const filters = parseFilters(raw);
+  // Favorites belong to the owner, so the "saved" filter does nothing for visitors.
+  const filters = { ...parseFilters(raw), ...(owner ? {} : { favorites: false }) };
   const db = await getDb();
   const now = new Date();
   // The hero (numbers + top drops) only shows on the plain home view, not while filtering.
@@ -76,15 +80,20 @@ async function DealsBrowser({ searchParams }: { searchParams: Promise<RawParams>
         <Link href="/how-it-works" className="hidden text-sm text-zinc-400 transition hover:text-white lg:block">
           How it works
         </Link>
-        <Link
-          href="/watchlist"
-          className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-zinc-200 transition hover:border-white/25 hover:text-white"
-        >
-          Watchlist
-        </Link>
-        <form action={fetchNow}>
-          <FetchButton />
-        </form>
+        {/* Only the owner sees the buttons that change things. */}
+        {owner && (
+          <>
+            <Link
+              href="/watchlist"
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-zinc-200 transition hover:border-white/25 hover:text-white"
+            >
+              Watchlist
+            </Link>
+            <form action={fetchNow}>
+              <FetchButton />
+            </form>
+          </>
+        )}
       </header>
 
       {isHome && (
@@ -142,6 +151,7 @@ async function DealsBrowser({ searchParams }: { searchParams: Promise<RawParams>
             </Link>
           );
         })}
+        {owner && (
         <Link
           href={hrefWith(raw, { fav: filters.favorites ? null : "1" })}
           className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium transition ${
@@ -155,6 +165,7 @@ async function DealsBrowser({ searchParams }: { searchParams: Promise<RawParams>
             {stats.saved}
           </span>
         </Link>
+        )}
       </nav>
 
       <div className="gap-6 lg:grid lg:grid-cols-[250px_minmax(0,1fr)]">
@@ -214,26 +225,42 @@ async function DealsBrowser({ searchParams }: { searchParams: Promise<RawParams>
                   </Link>
                 </>
               ) : (
-                "No deals saved yet. Press “Fetch now”."
+                "No deals yet. The first ones arrive with the next fetch."
               )}
             </div>
           ) : (
             <>
               {/* A wide table is hard to read on a phone, so phones always get cards. */}
               <div className={filters.view === "table" ? "hidden md:block" : ""}>
-                <View rows={rows} filters={filters} raw={raw} now={now} />
+                <View rows={rows} filters={filters} raw={raw} now={now} owner={owner} />
               </div>
               {filters.view === "table" && (
                 <div className="md:hidden">
-                  <DealCards rows={rows} filters={filters} raw={raw} now={now} />
+                  <DealCards rows={rows} filters={filters} raw={raw} now={now} owner={owner} />
                 </div>
               )}
             </>
           )}
 
-          <p className="mt-5 text-xs text-zinc-600">
-            Every price comes straight from its source and links back to it. Store deals by DealNews.
-          </p>
+          <footer className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-600">
+            <p>
+              Every price comes straight from its source and links back to it. Deals by{" "}
+              <a href="https://www.dealnews.com/" target="_blank" rel="noreferrer" className="underline hover:text-zinc-400">
+                DealNews
+              </a>
+              .
+            </p>
+            {ownerMode(process.env) === "password" &&
+              (owner ? (
+                <form action={signOut} className="ml-auto">
+                  <button className="hover:text-zinc-400">Sign out</button>
+                </form>
+              ) : (
+                <Link href="/login" className="ml-auto hover:text-zinc-400">
+                  Owner sign in
+                </Link>
+              ))}
+          </footer>
         </main>
       </div>
     </div>

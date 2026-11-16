@@ -12,7 +12,10 @@ import { runFetch } from "./run-fetch";
 const timer = globalThis as unknown as { dealdropTimer?: ReturnType<typeof setInterval> };
 
 export function startAutoFetch() {
-  const minutes = Number(process.env.AUTO_FETCH_MINUTES ?? 15);
+  // Online, the site runs in short-lived pieces that cannot hold a timer.
+  // There, the scheduled job (scripts/fetch.ts) does the fetching instead.
+  if (process.env.VERCEL) return;
+  const minutes = Number(process.env.AUTO_FETCH_MINUTES || 15);
   if (!Number.isFinite(minutes) || minutes <= 0 || timer.dealdropTimer) return;
 
   const tick = async () => {

@@ -8,6 +8,7 @@ import { getDb } from "@/db/client";
 import { listWatches } from "@/db/queries";
 import { formatCents, percentOff } from "@/lib/money";
 import { getWebhook } from "@/jobs/notify";
+import { requireOwner } from "@/lib/owner";
 import { addWatch, removeWatch, removeWebhook, saveWebhook, testAlert } from "../actions";
 
 export const metadata = { title: "Watchlist · DealDrop" };
@@ -27,6 +28,7 @@ const TEST_RESULTS: Record<string, { text: string; good: boolean }> = {
 /** Shows whether alerts are switched on, lets you paste the address, and send a test. Never shows the address. */
 async function AlertStatus({ searchParams }: { searchParams: PageProps<"/watchlist">["searchParams"] }) {
   await connection();
+  await requireOwner();
   const test = (await searchParams).test;
   const result = typeof test === "string" ? TEST_RESULTS[test] : undefined;
   const { status } = await getWebhook(await getDb());
@@ -157,6 +159,7 @@ export default function WatchlistPage({ searchParams }: PageProps<"/watchlist">)
 
 async function Watches() {
   await connection();
+  await requireOwner();
   const db = await getDb();
   const watches = await listWatches(db);
 

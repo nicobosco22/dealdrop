@@ -29,6 +29,12 @@ npm test
 | `drizzle/` | The SQL that creates the tables. Made by `npm run db:generate`; don't edit by hand. |
 | `.data/` | Your local database. Not saved to GitHub. Delete it to start fresh. |
 
+## Who can do what
+
+- **Visitors** can browse, search, filter and open the "why this score" card.
+- **The owner** (signed in with `OWNER_PASSWORD`) can also fetch, save favorites, and use the watchlist and Discord alerts.
+- On your own computer with no password set, you are always the owner.
+
 ## Rules this app follows
 
 - Never make up a price. If a price can't be read, the deal is skipped.
@@ -46,4 +52,4 @@ npm test
 - [ ] Step 5: more sources, duplicate merging (DealNews feed done; Best Buy and eBay wait for keys)
 - [x] Step 6: price history check, fake-markdown flag, deal score (uses the history DealNews reports; our own 90-day history is still building)
 - [x] Step 7: watchlist, alerts, favorites (alerts go to Discord once a webhook is set in .env.local)
-- [ ] Step 8: put it online with a 10-minute timer
+- [ ] Step 8: put it online with a 15-minute timer (code is ready: owner password, hosted database support, scheduled fetch; accounts still to set up)

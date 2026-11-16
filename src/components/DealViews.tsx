@@ -11,7 +11,7 @@ import { formatCents, percentOff } from "@/lib/money";
 import { specLabels, type Specs } from "@/lib/specs";
 import { endsLabel, timeAgo } from "@/lib/time";
 
-type ViewProps = { rows: DealRow[]; filters: Filters; raw: RawParams; now: Date };
+type ViewProps = { rows: DealRow[]; filters: Filters; raw: RawParams; now: Date; owner: boolean };
 
 const NEW_WINDOW_MS = 3 * 3600 * 1000;
 
@@ -168,7 +168,7 @@ function SortHeader(props: { sort: Sort; label: string; align?: "right"; filters
   );
 }
 
-export function DealTable({ rows, filters, raw, now }: ViewProps) {
+export function DealTable({ rows, filters, raw, now, owner }: ViewProps) {
   const head = { filters, raw };
   return (
     <div className="glass overflow-x-auto rounded-2xl">
@@ -214,7 +214,7 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
                     }`}
                   />
                   <div className="flex items-center gap-2">
-                    <Heart deal={deal} className="shrink-0" />
+                    {owner && <Heart deal={deal} className="shrink-0" />}
                     <Thumb deal={deal} className="h-9 w-16 shrink-0 rounded-md" />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -273,7 +273,7 @@ export function DealTable({ rows, filters, raw, now }: ViewProps) {
   );
 }
 
-export function DealCards({ rows, now }: ViewProps) {
+export function DealCards({ rows, now, owner }: ViewProps) {
   return (
     <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
       {rows.map((deal, index) => {
@@ -281,7 +281,7 @@ export function DealCards({ rows, now }: ViewProps) {
         return (
           <li key={deal.id} className="rise relative" style={{ "--i": index } as React.CSSProperties}>
             {/* The heart sits on top of the card, outside the link, so clicking it does not open the deal. */}
-            <Heart deal={deal} className="absolute right-2 top-2 z-10 rounded-full bg-black/60 backdrop-blur" />
+            {owner && <Heart deal={deal} className="absolute right-2 top-2 z-10 rounded-full bg-black/60 backdrop-blur" />}
             {/* Same for the score: it opens the "why this score" card instead of the deal. */}
             <span className="absolute bottom-8 right-3 z-10">
               <ScoreButton deal={deal} idPrefix="c" />
