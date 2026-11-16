@@ -9,15 +9,6 @@
         "PATH=\"$HOME/.local/node/bin:$PATH\" exec npm run dev"
       ],
       "port": 3000
-    },
-    {
-      "name": "dealdrop-visitor-check",
-      "runtimeExecutable": "/bin/sh",
-      "runtimeArgs": [
-        "-c",
-        "PATH=\"$HOME/.local/node/bin:$PATH\" OWNER_PASSWORD=local-check-only exec npx next start -p 3100"
-      ],
-      "port": 3100
     }
   ]
 }
