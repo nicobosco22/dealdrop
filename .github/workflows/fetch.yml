@@ -1,0 +1,30 @@
+# Fetches new deals every 15 minutes and sends watchlist alerts.
+# Needs one repository secret: DATABASE_URL (the online database address).
+name: Fetch deals
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: # lets you press "Run workflow" by hand
+
+# Never run two fetches at once. If one is still going, the next one waits.
+concurrency:
+  group: fetch-deals
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run fetch
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Optional. If blank, the address saved on the Watchlist page is used.
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
